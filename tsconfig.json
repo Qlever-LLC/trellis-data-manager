@@ -9,7 +9,6 @@
     "importHelpers": true,
     "alwaysStrict": true,
     "strict": true,
-    "importsNotUsedAsValues": "error",
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

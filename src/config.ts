@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2022 Qlever LLC
+ * Copyright 2021 Qlever LLC
  *
  * Licensed under the Apache License, Version 2.0 (the 'License');
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,72 @@
  * limitations under the License.
  */
 
-import libConfig from '@oada/lib-config';
+import 'dotenv/config';
 
-export const { config } = await libConfig({
+import convict from 'convict';
+import { duration } from 'convict-format-with-moment';
+
+convict.addFormat(duration);
+
+const config = convict({
+  service: {
+    path: {
+      doc: 'Base path for the service',
+      default: '/bookmarks/services/trellis-data-manager',
+      env: 'SERVICE_PATH',
+      arg: 'service_path',
+    },
+    name: {
+      doc: 'Name of the service; used by jobs lib; helps configuring tests separately',
+      default: 'trellis-data-manager',
+      env: 'SERVICE_NAME',
+      arg: 'service_name',
+    },
+  },
+  services: {
+    query: {
+      doc: '',
+      format: Boolean,
+      default: true,
+      env: 'TARGET_SERVICE',
+      arg: 'targetServiceService',
+    },
+    merge: {
+      doc: 'Enable/disable subservice watching the configuration',
+      format: Boolean,
+      default: true,
+      env: 'WATCH_CONFIG_SERVICE',
+      arg: 'watchConfigService',
+    },
+  },
+  timeouts: {
+    query: {
+      doc: 'Timeout duration for query jobs',
+      format: 'duration',
+      // The types for duration suck
+      default: 86_400_000 as unknown as number,
+      env: 'QUERY_TIMEOUT',
+      arg: 'query-timeout',
+    },
+  },
   oada: {
     domain: {
       doc: 'OADA API domain',
       format: String,
-      default: 'localhost',
+      default: 'proxy',
       env: 'DOMAIN',
       arg: 'domain',
     },
     token: {
       doc: 'OADA API token',
-      format: Array,
-      default: ['god'],
+      format: String,
+      default: 'god-proxy',
       env: 'TOKEN',
       arg: 'token',
-    },
-  },
-  /**
-   * Add more config stuff when needed
-   */
+    }
+  }
 });
+
+config.validate({ allowed: 'warn' });
+
+export default config;
