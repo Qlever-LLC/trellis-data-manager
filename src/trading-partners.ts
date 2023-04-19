@@ -21,7 +21,6 @@ import config from './config.masterdata.js';
 
 import debug from 'debug';
 import _ from 'lodash';
-//import ksuid from 'ksuid'
 
 import type { JsonObject, OADAClient } from '@oada/client';
 
@@ -191,19 +190,25 @@ export async function generateTP(data: any, contentType: string, oada: OADAClien
       contentType,
     });
     location = headers['content-location'];
-  } catch (err: unknown) {
-    console.log(err);
-    throw err;
+  } catch (error_: unknown) {
+    error(error_);
+    throw error_;
   }
-  const resId = location!.replace(/^\//, '');
+
+  const resourceId = location!.replace(/^\//, '');
+  data = {
+    ...data,
+    masterid: resourceId,
+    id: resourceId,
+  }
   // Add the masterid to the TP resource
   await oada.put({
     path: location!,
-    data: { masterid: resId }
+    data,
   });
   //Create the TP link
-  const link = { _id: resId, _rev: 0 };
-  const key = resId.replace(/^resources\//, '');
+  const link = { _id: resourceId, _rev: 0 };
+  const key = resourceId.replace(/^resources\//, '');
   try {
     await oada.put({
       path: `${TL_TP}`,

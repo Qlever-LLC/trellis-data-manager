@@ -15,13 +15,21 @@
  * limitations under the License.
  */
 
-import type { Json, OADAClient } from '@oada/client';
+import debug from 'debug';
+import type { OADAClient } from '@oada/client';
 import { ChangeType } from '@oada/list-lib';
 import Fuse from 'fuse.js';
+//import type { FuseResultMatch } from 'fuse.js';
 import { AssumeState, ListWatch } from '@oada/list-lib';
 import type { Service, WorkerFunction } from '@oada/jobs';
 import config from './config.js';
 import tree from './tree.js';
+
+const log = {
+  info: debug('ts-data-manager-Search:info'),
+  warn: debug('trellis-data-manager-Search:warn'),
+  error: debug('trellis-data-manager-Search:error'),
+};
 
 type ElementBase = {
   id?: string;
@@ -126,16 +134,19 @@ export class Search<Element extends ElementBase> {
       config.get('timeouts.query'),
       this.query.bind(this) as unknown as WorkerFunction
     );
+    log.info(`Started ${this.name}-query listener.`);
     this.service.on(
       `${this.name}-create`,
       config.get('timeouts.query'),
       this.create.bind(this) as unknown as WorkerFunction
     );
+    log.info(`Started ${this.name}-create listener.`);
     this.service.on(
       `${this.name}-ensure`,
       config.get('timeouts.query'),
       this.ensure.bind(this) as unknown as WorkerFunction
     );
+    log.info(`Started ${this.name}-ensure listener.`);
   }
 
   setCollection(data: Record<string, Element>) {
@@ -154,38 +165,69 @@ export class Search<Element extends ElementBase> {
       )
     );
     if (!element || element === undefined || Object.keys(element).length === 0)
-      throw new Error('No matches found');
-    const matches = this.index.search(element);
-    if (matches.length > 0) return matches as Json;
+      throw new Error('Invalid input search element at job.config.element');
 
-    throw new Error('No matches found');
+    // First find exact matches using primary keys
+    if (element.sapid ?? element.id) {
+      const exactMatches = this.exactSearch(element);
+      if (exactMatches.length > 0) return exactMatches;
+    }
+
+    // Finally, try regular search
+    return this.index.search(element);
   }
 
   ensure(job: { config: { element: Element } }) {
-    let matches: any;
-    try {
-      matches = this.query(job);
-    } catch (error: unknown) {}
-    if (!matches) return { new: true, entry: this.create(job)};
-    if (matches.length === 1) {
-      return { entry: matches![0] as Json, new: false };
-    } else {
-      throw new Error('multiple matches found');
+    const matches = this.query(job);
+    if (matches.length > 0) {
+      return { matches, new: false };
     }
+    return { new: true, entry: this.create(job) };
+  }
+
+  exactSearch(element: any) {
+    if (element.sapid) {
+      const exactMatches = this.index.search({ sapid: element.sapid });
+      if (exactMatches.length === 1) {
+        log.info(`Found exact match from sapid ${element.sapid}`);
+        return exactMatches;
+      }
+    }
+    if (element.id) {
+      const exactMatches = this.index.search({ id: element.id });
+      if (exactMatches.length === 1) {
+        log.info(`Found exact match from id ${element.id}`);
+        return exactMatches;
+      }
+    }
+    return []
   }
 
   async create(job: { config: { element: Element } }) {
+    // Run the exact match portion of the search
+    const exactMatches = this.exactSearch(job.config.element);
+    if (exactMatches.length === 1) {
+      log.warn(`Cannot create new item. Exact matches on 'sapid' or 'id' already exist for input ${job.config.element}`);
+      return exactMatches[0];
+    } else if (exactMatches.length > 1) {
+      throw new Error(`Cannot create new item. Multiple exact matches on 'sapid' or 'id' already exist for input ${job.config.element}`);
+    }
+
+    // Verify matches do not collide
+
     let stuff: any;
     try {
-      stuff = await this.generate(job.config.element, this.contentType, this.path, this.oada);
+      stuff = await this.generate(job.config.element, this.contentType, this.oada, this.path);
       this.assert(stuff);
-    } catch (error: unknown) {
+    } catch (error_: unknown) {
+      throw error_;
       // Undo generate steps
     }
+    return stuff;
   }
 
   async setItem({item, pointer}: {item: any, pointer: string}) {
-    let id = pointer.replace(/^\//, '');
+    const id = pointer.replace(/^\//, '');
     if (id === 'expand-index') return;
 
     item = await item;
@@ -194,26 +236,26 @@ export class Search<Element extends ElementBase> {
   }
 
   async setItemExpand({item, pointer}: {item: any, pointer: string}) {
-    let id = pointer.replace(/^\//, '');
+    const id = pointer.replace(/^\//, '');
     if (id === 'expand-index') return;
 
     item = await item;
     await this.oada.put({
       path: `${this.path}/expand-index/${id}`,
-      data: item
-    })
+      data: item,
+    });
   }
 
   async removeItemExpand({pointer}: {pointer: string}) {
-    let id = pointer.replace(/^\//, '');
+    const id = pointer.replace(/^\//, '');
     if (id === 'expand-index') return;
     await this.oada.delete({
       path: `${this.path}/expand-index/${id}`,
-    })
+    });
   }
 
   async removeItem({pointer}: {pointer: string}) {
-    let id = pointer.replace(/^\//, '');
+    const id = pointer.replace(/^\//, '');
     if (id === 'expand-index') return;
     delete this.indexObject[id];
     this.setCollection(this.indexObject);

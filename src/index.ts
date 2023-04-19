@@ -23,6 +23,7 @@ import { assert as assertTP } from '@oada/types/trellis/service/master-data-sync
 import config from './config.js';
 import { connect } from '@oada/client';
 import debug from 'debug';
+import esMain from 'es-main';
 import { generateTP } from './trading-partners.js';
 import type { OADAClient } from '@oada/client';
 import { Search } from './search.js';
@@ -105,3 +106,10 @@ mappings: {
       },
     },
 */
+
+if (esMain(import.meta)) {
+  log.info('Starting up the service. Calling initialize');
+  await run();
+} else {
+  log.info('Just importing fl-sync');
+}

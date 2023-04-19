@@ -236,12 +236,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oada/client@portal:/home/sanoel/client::locator=%40qlever-llc%2Foada-service-template%40workspace%3A.":
+"@oada/client@portal:/home/sanoel/client::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A.":
   version: 0.0.0-use.local
-  resolution: "@oada/client@portal:/home/sanoel/client::locator=%40qlever-llc%2Foada-service-template%40workspace%3A."
+  resolution: "@oada/client@portal:/home/sanoel/client::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A."
   dependencies:
-    "@oada/jobs": ^4.2.1
-    "@oada/types": ^3.3.0
+    "@oada/jobs": ^4.2.2
+    "@oada/types": ^3.4.5
     abort-controller: ^3.0.0
     buffer: ^6.0.3
     bufferutil: ^4.0.6
@@ -262,17 +262,18 @@ __metadata:
     p-queue: ^7.3.0
     reconnecting-websocket: ^4.4.0
     resolve-alpn: ^1.2.1
+    serialize-error: ^11.0.0
     supports-color: ^9.2.3
-    tslib: ^2.4.0
+    tslib: ^2.5.0
     utf-8-validate: ^5.0.9
     ws: ^8.9.0
     xksuid: ^0.0.3
   languageName: node
   linkType: soft
 
-"@oada/jobs@portal:/home/sanoel/jobs::locator=%40qlever-llc%2Foada-service-template%40workspace%3A.":
+"@oada/jobs@portal:/home/sanoel/jobs::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A.":
   version: 0.0.0-use.local
-  resolution: "@oada/jobs@portal:/home/sanoel/jobs::locator=%40qlever-llc%2Foada-service-template%40workspace%3A."
+  resolution: "@oada/jobs@portal:/home/sanoel/jobs::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A."
   dependencies:
     "@ava/typescript": ^3.0.1
     "@oada/client": ^4.5.0
@@ -406,9 +407,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@qlever-llc/oada-service-template@workspace:.":
+"@qlever-llc/trellis-data-manager@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@qlever-llc/oada-service-template@workspace:."
+  resolution: "@qlever-llc/trellis-data-manager@workspace:."
   dependencies:
     "@ava/typescript": ^3.0.1
     "@elastic/elasticsearch": ^8.6.0
@@ -433,6 +434,7 @@ __metadata:
     convict-format-with-moment: ^6.2.0
     debug: ^4.3.4
     dotenv: ^16.0.3
+    es-main: ^1.2.0
     eslint: ^8.34.0
     eslint-config-prettier: ^8.6.0
     eslint-config-xo: ^0.43.1
@@ -2295,6 +2297,13 @@ __metadata:
     is-string: ^1.0.5
     isarray: ^2.0.5
   checksum: f75e66acb6a45686fa08b3ade9c9421a70d36a0c43ed4363e67f4d7aab2226cb73dd977cb48abbaf75721b946d3cd810682fcf310c7ad0867802fbf929b17dcf
+  languageName: node
+  linkType: hard
+
+"es-main@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "es-main@npm:1.2.0"
+  checksum: b1feaaa71c0c5b0c494cd7d4f1fdb32fcdc9835b824ca2f61a7fbb899627305d88efef584490c24ebacde79289ac14908823c066176e15a784c49fa924db9b0b
   languageName: node
   linkType: hard
 
