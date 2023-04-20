@@ -17,13 +17,16 @@
 
 import debug from 'debug';
 import type { OADAClient } from '@oada/client';
+import type { Tree } from '@oada/types/oada/tree/v1.js';
 import { ChangeType } from '@oada/list-lib';
 import Fuse from 'fuse.js';
 //import type { FuseResultMatch } from 'fuse.js';
 import { AssumeState, ListWatch } from '@oada/list-lib';
 import type { Service, WorkerFunction } from '@oada/jobs';
 import config from './config.js';
-import tree from './tree.js';
+//@ts-ignore
+import { partial } from 'match-json';
+import { JsonPointer } from 'json-ptr';
 
 const log = {
   info: debug('ts-data-manager-Search:info'),
@@ -36,10 +39,9 @@ type ElementBase = {
 };
 
 export class Search<Element extends ElementBase> {
-  //Assert function
-  assert: any;
-  contentType: string;
-  generate: any;
+  tree: Tree;
+  // The path of the expand-index
+  expandIndexPath: string;
   // The search index containing the set of known elements
   index: any;
   // The name of the set of elements
@@ -56,34 +58,38 @@ export class Search<Element extends ElementBase> {
   // An object representation of the set of known elements for the purpose of
   // handling changes and updating the search index more easily.
   indexObject: Record<string, Element>;
+  //Assert function
+  assert?: any;
+  generate?: any;
   // The watch on the list of known elements, tracking add/remove/update
   #watch?: ListWatch;
 
   constructor({
     assert,
-    contentType,
+    tree,
     generate,
     oada,
     path,
     name,
     service,
   }: {
-    assert: any;
-    contentType: string;
-    generate: any;
+    assert?: any;
+    tree: Tree;
+    generate?: any;
     oada: OADAClient;
     path: string;
     name: string;
     service: Service;
   }) {
     this.assert = assert;
-    this.contentType = contentType;
+    this.tree = tree;
     this.generate = generate;
     this.name = name;
     this.oada = oada;
     this.path = path;
+    this.expandIndexPath = `${path}/_meta/indexings/expand-index`;
     this.service = service;
-    this.searchKeys = [{name: 'name', weight: 2}, 'phone', 'email', 'address', 'city', 'state', 'sapid', 'id', 'key'];
+    this.searchKeys = [{name: 'name', weight: 2}, 'phone', 'email', 'address', 'city', 'state', 'sapid', 'masterid'];
     this.searchKeysList = this.searchKeys.map((i) => typeof(i) === 'string' ? i : i.name);
     const options = {
       includeScore: true,
@@ -95,12 +101,24 @@ export class Search<Element extends ElementBase> {
   }
 
   async init() {
+    await this.oada.ensure({
+      path: this.path,
+      data: {},
+      tree: this.tree,
+    });
+
+    await this.oada.ensure({
+      path: this.expandIndexPath,
+      data: {},
+      tree: this.tree,
+    });
+
     this.#watch = new ListWatch({
       path: this.path,
       name: this.name,
       conn: this.oada,
       resume: true,
-      tree,
+      tree: this.tree,
       itemsPath: `$.*`,
       onNewList: AssumeState.Handled,
     });
@@ -119,7 +137,7 @@ export class Search<Element extends ElementBase> {
 
     // Grab the current set of things and load them up
     let { data } = (await this.oada.get({
-      path: `${this.path}/expand-index`,
+      path: `${this.expandIndexPath}`,
     })) as unknown as { data: Record<string, Element> };
 
     data = Object.fromEntries(
@@ -135,11 +153,13 @@ export class Search<Element extends ElementBase> {
       this.query.bind(this) as unknown as WorkerFunction
     );
     log.info(`Started ${this.name}-query listener.`);
+    /*
     this.service.on(
       `${this.name}-create`,
       config.get('timeouts.query'),
       this.create.bind(this) as unknown as WorkerFunction
     );
+    */
     log.info(`Started ${this.name}-create listener.`);
     this.service.on(
       `${this.name}-ensure`,
@@ -150,9 +170,8 @@ export class Search<Element extends ElementBase> {
   }
 
   setCollection(data: Record<string, Element>) {
-    const collection = Object.entries(data)
-      .filter(([_, value]) => value !== undefined)
-      .map(([key, value]) => ({ key, ...value }));
+    const collection = Object.values(data)
+      .filter((value) => value !== undefined)
 
     this.index.setCollection(collection);
   }
@@ -170,19 +189,43 @@ export class Search<Element extends ElementBase> {
     // First find exact matches using primary keys
     if (element.sapid ?? element.id) {
       const exactMatches = this.exactSearch(element);
-      if (exactMatches.length > 0) return exactMatches;
+      if (exactMatches.length > 0) return {...exactMatches, exact: true };
     }
 
     // Finally, try regular search
     return this.index.search(element);
   }
 
-  ensure(job: { config: { element: Element } }) {
+  async ensure(job: { config: { element: Element } }) {
     const matches = this.query(job);
     if (matches.length > 0) {
-      return { matches, new: false };
+      if (matches.exact) {
+        if (matches.length === 1) {
+          log.info(`An exact match on 'sapid' or 'masterid' was found for input ${job.config.element}. Returning match.`);
+          return { entry: matches[0].item, exact: true }
+        }
+        if (matches.length > 1) {
+          log.error(`Multiple exact matches on 'sapid' or 'masterid' already exist for input ${job.config.element}.`);
+        return matches;
+        }
+      // Use partial() instead of fuse scoring here to gain more certainty...
+      } else if (matches.length === 1 && partial(matches[0].item, job.config.element)) {
+        log.info(`An exact match was found on the input data (100% intersection). Returning match.`);
+        return { entry: matches[0].item, exact: true }
+      }
     }
-    return { new: true, entry: this.create(job) };
+    log.info('No exact matches were found. Creating a new entry.')
+
+    //Otherwise, create it
+    let entry;
+    try {
+      entry = await this.#generate(job.config.element);
+      if (this.assert) this.assert(entry);
+    } catch (error_: unknown) {
+      throw error_;
+      // Undo generate steps
+    }
+    return { new: true, entry };
   }
 
   exactSearch(element: any) {
@@ -193,37 +236,14 @@ export class Search<Element extends ElementBase> {
         return exactMatches;
       }
     }
-    if (element.id) {
-      const exactMatches = this.index.search({ id: element.id });
+    if (element.masterid) {
+      const exactMatches = this.index.search({ masterid: element.masterid });
       if (exactMatches.length === 1) {
-        log.info(`Found exact match from id ${element.id}`);
+        log.info(`Found exact match from masterid ${element.masterid}`);
         return exactMatches;
       }
     }
     return []
-  }
-
-  async create(job: { config: { element: Element } }) {
-    // Run the exact match portion of the search
-    const exactMatches = this.exactSearch(job.config.element);
-    if (exactMatches.length === 1) {
-      log.warn(`Cannot create new item. Exact matches on 'sapid' or 'id' already exist for input ${job.config.element}`);
-      return exactMatches[0];
-    } else if (exactMatches.length > 1) {
-      throw new Error(`Cannot create new item. Multiple exact matches on 'sapid' or 'id' already exist for input ${job.config.element}`);
-    }
-
-    // Verify matches do not collide
-
-    let stuff: any;
-    try {
-      stuff = await this.generate(job.config.element, this.contentType, this.oada, this.path);
-      this.assert(stuff);
-    } catch (error_: unknown) {
-      throw error_;
-      // Undo generate steps
-    }
-    return stuff;
   }
 
   async setItem({item, pointer}: {item: any, pointer: string}) {
@@ -236,21 +256,21 @@ export class Search<Element extends ElementBase> {
   }
 
   async setItemExpand({item, pointer}: {item: any, pointer: string}) {
-    const id = pointer.replace(/^\//, '');
-    if (id === 'expand-index') return;
+    const key = pointer.replace(/^\//, '');
+    if (key === 'expand-index') return;
 
     item = await item;
     await this.oada.put({
-      path: `${this.path}/expand-index/${id}`,
+      path: `${this.expandIndexPath}/${key}`,
       data: item,
     });
   }
 
   async removeItemExpand({pointer}: {pointer: string}) {
-    const id = pointer.replace(/^\//, '');
-    if (id === 'expand-index') return;
+    const key = pointer.replace(/^\//, '');
+    if (key === 'expand-index') return;
     await this.oada.delete({
-      path: `${this.path}/expand-index/${id}`,
+      path: `${this.expandIndexPath}/${key}`,
     });
   }
 
@@ -259,5 +279,72 @@ export class Search<Element extends ElementBase> {
     if (id === 'expand-index') return;
     delete this.indexObject[id];
     this.setCollection(this.indexObject);
+  }
+
+  /**
+   * updates the expand index with the information extracted
+   * from the received FL business
+   * @param data expand index content
+   */
+  async updateExpandIndex(
+    data: any,
+    key: string,
+    oada: OADAClient,
+  ) {
+    try {
+      // Expand index
+      await oada.put({
+        path: `${this.expandIndexPath}`,
+        data: {
+          [key]: data,
+        },
+      });
+      log.info(`Expand index updated at ${this.expandIndexPath}/${key}.`);
+    } catch (error_: unknown) {
+      log.error({ error: error_ }, 'Error when mirroring expand index.');
+    }
+  } // UpdateExpandIndex
+
+  async #generate(data: any) {
+    try {
+      data = this.generate ? await this.generate(data, this.oada, this.path) : data;
+      // I insist on making the key equal to the resource id for something like
+      // master data elements so lets do it this way instead of tree POST
+      const ptr = JsonPointer.create(`${this.path}/*/_type`);
+      const { headers } = await this.oada.post({
+        path: `/resources`,
+        data,
+        contentType: ptr.get(this.tree) as string,
+      })
+      const location = headers['content-location'];
+      const _id = location!.replace(/^\//, '');
+      const key = location!.replace(/^\/resources\//, '');
+
+      // Add the masterid to itself
+      await this.oada.put({
+        path: location!,
+        data: { masterid: _id }
+      });
+
+      // Make the link
+      await this.oada.put({
+        path: this.path,
+        data: { [key]: { _id, _rev: 0} },
+      })
+      log.info(`Added item to list at: ${this.path}/${key}`);
+
+      data = { ...data, masterid: _id }
+
+      // Update the expand index
+      // FYI: data does not contain _id so it is safe to send to
+      await this.updateExpandIndex(data, key, this.oada);
+      log.info('Added item to the expand-index ', data.masterid);
+      //Optimistic add to collection so we don't wait for things
+      await this.setItem({pointer: key, item: data});
+      return data;
+    } catch (error_: unknown) {
+      log.error('Generate Errored:', error_);
+      throw error_;
+    }
   }
 }

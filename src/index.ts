@@ -29,6 +29,7 @@ import type { OADAClient } from '@oada/client';
 import { Search } from './search.js';
 import { Service } from '@oada/jobs';
 import type TradingPartner from '@oada/types/trellis/service/master-data-sync/tradingpartners.js';
+import { tree } from './tree.masterData.js';
 const log = {
   error: debug('tdm:error'),
   info: debug('tdm:info'),
@@ -38,7 +39,6 @@ const log = {
 const { token, domain } = config.get('oada');
 const { name: SERVICE_NAME } = config.get('service');
 
-//const tradingPartnerExpand = `/bookmarks/trellisfw/trading-partners/expand-index`;
 const tradingPartner = `/bookmarks/trellisfw/trading-partners`;
 let oada: OADAClient;
 
@@ -71,7 +71,7 @@ export async function run() {
       service: svc,
       assert: assertTP,
       generate: generateTP,
-      contentType: 'application/vnd.trellisfw.trading-partner.1+json',
+      tree,
     });
     await m.init();
   } catch (cError: unknown) {

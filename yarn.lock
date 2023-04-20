@@ -240,7 +240,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@oada/client@portal:/home/sanoel/client::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A."
   dependencies:
-    "@oada/jobs": ^4.2.2
+    "@oada/jobs": ^4.2.4
     "@oada/types": ^3.4.5
     abort-controller: ^3.0.0
     buffer: ^6.0.3
@@ -461,6 +461,7 @@ __metadata:
     eslint-plugin-unicorn: ^45.0.2
     fuse.js: ^6.6.2
     js-sha256: ^0.9.0
+    json-ptr: ^3.1.1
     ksuid: ^3.0.0
     lodash: ^4.17.21
     match-json: ^1.3.5

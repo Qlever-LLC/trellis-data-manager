@@ -20,17 +20,17 @@ import config from '../dist/config.js';
 import test from 'ava';
 import { connect } from '@oada/client';
 import type { OADAClient } from '@oada/client';
-import { assert as assertTP } from '@oada/types/trellis/service/master-data-sync/tradingpartners.js';
-import { generateTP } from '../dist/trading-partners.js';
+//import { assert as assertTP } from '@oada/types/trellis/service/master-data-sync/tradingpartners.js';
+//import { generateTP } from '../dist/trading-partners.js';
 import { Search } from '../dist/search.js';
 import { Service } from '@oada/jobs';
-import { tree } from '../dist/tree.js';
+import { tree } from '../dist/tree.masterData.js';
 import { setTimeout } from 'node:timers/promises';
 
 const { token, domain } = config.get('oada');
 
 let testTree = _.cloneDeep(tree);
-testTree.bookmarks.test = _.cloneDeep(testTree.bookmarks.trellisfw['trading-partners']);
+testTree!.bookmarks!.test = _.cloneDeep(testTree!.bookmarks!.trellisfw!['trading-partners']) || {};
 
 let conn: OADAClient;
 
@@ -76,6 +76,10 @@ const testObject = {
 test.before('Start up the service', async () => {
   conn = await connect({ token, domain });
 
+  await conn.delete({
+    path: `/bookmarks/test`,
+  })
+
   const svc = new Service({
     name: 'test-service',
     oada: conn,
@@ -83,13 +87,13 @@ test.before('Start up the service', async () => {
   await svc.start();
 
   search = new Search<TestElement>({
-    assert: assertTP,
-    generate: generateTP,
+    //assert: assertTP,
+//    generate: generateTP,
     name: 'test',
     oada: conn,
     path: '/bookmarks/test',
     service: svc,
-    contentType: 'application/vnd.trellisfw.trading-partner.1+json',
+    tree: testTree,
   });
 
   search.indexObject = _.cloneDeep(testObject);
@@ -98,7 +102,7 @@ test.before('Start up the service', async () => {
 
 test.after('Clean up the service', async () => {
   await conn.delete({
-    path: `/bookmarks/test/test11111`,
+    path: `/bookmarks/test`,
   })
 })
 
@@ -188,6 +192,7 @@ test('should throw an error when querying with no matches', async (t) => {
   t.deepEqual(err!.message,'No matches found');
 });
 
+/*
 test('should throw an error when ensuring with multiple matches', async (t) => {
   const item1 = { id: '123', name: 'John Doe', phone: '123-456-7890' };
   const item2 = { id: '456', name: 'John Doe', phone: '098-765-4321' };
@@ -197,6 +202,7 @@ test('should throw an error when ensuring with multiple matches', async (t) => {
   const err = await t.throwsAsync(async () => await search.ensure({ config: { element: { name: 'John Doe' } } }))
   t.deepEqual(err!.message,'multiple matches found');
 });
+*/
 
 /* assertion really cannot fail so long as items are created from the base template...
 test.only('should create an entry if none exist when ensuring', async (t) => {
@@ -207,7 +213,7 @@ test.only('should create an entry if none exist when ensuring', async (t) => {
 });
 */
 
-test('Adding an item to the expand index should land it in the collection', async (t) => {
+test('Adding an item to the list resource should land it in the collection', async (t) => {
   const key = 'test11111';
   const data = {
     city: 'Testing',
@@ -234,7 +240,7 @@ test('Adding an item to the expand index should land it in the collection', asyn
   t.deepEqual(searchObj, { ...data, key });
 });
 
-test.only('Removing an item from the expand index should prevent it from being returned', async (t) => {
+test('Removing an item from the list resource should prevent it from being returned', async (t) => {
   const key = 'test11111';
   const data = {
     city: 'Testing',
@@ -262,4 +268,99 @@ test.only('Removing an item from the expand index should prevent it from being r
   await setTimeout(3_000);
 
   t.deepEqual(search.index._docs.length, 0);
+});
+
+test('Ensure should return the created thing if it does not exist', async (t) => {
+  // Setup things
+  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777' };
+  // Run ensure
+  const result = await search.ensure({
+    config: {
+      element: item1
+    },
+  });
+
+  //Test
+  t.is(result.new, true);
+  t.assert(result.entry);
+  t.is(result.entry.id, item1.id);
+  t.is(result.entry.phone, item1.phone);
+  t.is(result.entry.name, item1.name);
+});
+
+test('Ensure should return exact matches based on masterid only', async (t) => {
+  // Setup things
+  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777' };
+  // Run ensure
+  await search.ensure({ config: { element: item1 }});
+  // Set these things here because the listener isn't running
+  //search.indexObject = { [item1.id]: item1};
+  //search.setCollection(search.indexObject);
+  const result = await search.ensure({ config: { element: item1 }});
+
+  //Test
+  t.is(result.exact, true);
+  t.falsy(result.new);
+  t.assert(result.entry);
+  t.is(result.entry.phone, item1.phone);
+  t.is(result.entry.name, item1.name);
+  t.is(result.entry.id, item1.id);
+  t.assert(result.entry.masterid);
+});
+
+test.only('Ensure should return exact matches based on sapid only', async (t) => {
+  // Setup things
+  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777' };
+  // Run ensure
+  await search.ensure({ config: { element: item1 }});
+  // Set these things here because the listener isn't running
+  //search.indexObject = { [item1.id]: item1};
+  //search.setCollection(search.indexObject);
+  const result = await search.ensure({ config: { element: item1 }});
+
+  //Test
+  t.is(result.new, false);
+  t.assert(result.matches);
+  t.is(result.matches.length, 1);
+  t.is(result.matches[0].item.phone, item1.phone);
+  t.is(result.matches[0].item.name, item1.name);
+  t.is(result.matches[0].item.id, item1.id);
+});
+
+test('Ensure should return exact matches if 100% match on non-sapid/masterid keys', async (t) => {
+  // Setup things
+  const item1 = { name: 'Sam Doe', phone: '777-777-7777', city: 'Testville' };
+  // Run ensure
+  await search.ensure({ config: { element: item1 }});
+  // Set these things here because the listener isn't running
+  //search.indexObject = { [item1.id]: item1};
+  //search.setCollection(search.indexObject);
+  const result = await search.ensure({ config: { element: item1 }});
+
+  //Test
+  t.is(result.new, false);
+  t.assert(result.matches);
+  t.is(result.matches.length, 1);
+  t.is(result.matches[0].item.phone, item1.phone);
+  t.is(result.matches[0].item.name, item1.name);
+  t.is(result.matches[0].item.id, item1.city);
+});
+
+test('Ensure should return multiple exact matches on sapid', async (t) => {
+  // Setup things
+  const item1 = { name: 'Sam Doe', phone: '777-777-7777', city: 'Testville' };
+  // Run ensure
+  await search.ensure({ config: { element: item1 }});
+  // Set these things here because the listener isn't running
+  //search.indexObject = { [item1.id]: item1};
+  //search.setCollection(search.indexObject);
+  const result = await search.ensure({ config: { element: item1 }});
+
+  //Test
+  t.is(result.new, false);
+  t.assert(result.matches);
+  t.is(result.matches.length, 1);
+  t.is(result.matches[0].item.phone, item1.phone);
+  t.is(result.matches[0].item.name, item1.name);
+  t.is(result.matches[0].item.id, item1.city);
 });
