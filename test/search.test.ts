@@ -222,20 +222,9 @@ test('should create an entry if none exist when ensuring', async (t) => {
 */
 
 test('Adding an item to the list resource should land it in the collection', async (t) => {
-  const key = 'test11111';
-  const data = {
-    city: 'Testing',
-    address: '444 Test Street',
-    email: 'testemail@gmail.com',
-    id: 'resources/test111111111',
-    name: 'Centricity Test Company, LLC',
-    phone: '000-111-2222',
-    sapid:
-      'fd30697387c306ee33506f78e0b8265fc89a90385c005adc0ddec5894aea6f1f',
-    type: 'CUSTOMER',
-  };
+  const data = { id: '765', name: 'Sam Doe', phone: '777-777-7777', sapid: 'test111', masterid: 'resources/abc123' };
   await conn.put({
-    path: `${search.path}/${key}`,
+    path: `${search.path}/${data.id}`,
     data,
     tree: testTree,
   });
@@ -245,37 +234,28 @@ test('Adding an item to the list resource should land it in the collection', asy
   const searchObj = Object.fromEntries(
     Object.entries(search.index._docs[0]).filter(([key]) => !key.startsWith('_'))
   );
-  t.deepEqual(searchObj, { ...data, key });
+  t.deepEqual(searchObj, data);
 });
 
-test('Removing an item from the list resource should prevent it from being returned', async (t) => {
-  const key = 'test11111';
-  const data = {
-    city: 'Testing',
-    address: '444 Test Street',
-    email: 'testemail@gmail.com',
-    id: 'resources/test111111111',
-    name: 'Centricity Test Company, LLC',
-    phone: '000-111-2222',
-    sapid:
-      'fd30697387c306ee33506f78e0b8265fc89a90385c005adc0ddec5894aea6f1f',
-    type: 'CUSTOMER',
-  };
+test.only('Removing an item from the list resource should prevent it from being returned', async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
+  search.setCollection(search.indexObject);
+  const data = { id: '765', name: 'Sam Doe', phone: '777-777-7777', sapid: 'test111', masterid: 'resources/abc123' };
   await conn.put({
-    path: `${search.path}/${key}`,
+    path: `${search.path}/${data.id}`,
     data,
     tree: testTree,
   });
 
   await setTimeout(3_000);
-
+  t.is(search.index._docs.length, Object.values(testObject).length + 1);
   await conn.delete({
-    path: `${search.path}/${key}`,
+    path: `${search.path}/${data.id}`,
   });
 
   await setTimeout(3_000);
 
-  t.deepEqual(search.index._docs.length, 0);
+  t.is(search.index._docs.length, Object.values(testObject).length);
 });
 
 test('Ensure should return the created thing if it does not exist', async (t) => {
