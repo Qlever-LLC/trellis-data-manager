@@ -44,6 +44,7 @@ type TestElement = {
   state?: string;
   sapid?: string;
   key?: string;
+  masterid?: string;
 }
 
 let search: Search<TestElement>;
@@ -58,6 +59,7 @@ const testObject = {
     city: 'Anytown',
     state: 'USA',
     sapid: '123456789',
+    masterid: 'resources/123456789',
     key: '1',
   },
   '2': {
@@ -69,11 +71,12 @@ const testObject = {
     city: 'Somewhere',
     state: 'USA',
     sapid: '987654321',
+    masterid: 'resources/987654321',
     key: '2',
   },
 };
 
-test.before('Start up the service', async () => {
+test.beforeEach('Start up the service', async () => {
   conn = await connect({ token, domain });
 
   await conn.delete({
@@ -96,7 +99,6 @@ test.before('Start up the service', async () => {
     tree: testTree,
   });
 
-  search.indexObject = _.cloneDeep(testObject);
   await search.init();
 });
 
@@ -107,105 +109,111 @@ test.after('Clean up the service', async () => {
 })
 
 test('setCollection should set the index object and search index', (t) => {
+  search.indexObject = _.cloneDeep(testObject);
   search.setCollection(search.indexObject);
-  t.deepEqual(search.indexObject, {
-    '1': {
-      id: '1',
-      name: 'John Doe',
-      phone: '1234567890',
-      email: 'john.doe@example.com',
-      address: '123 Main St.',
-      city: 'Anytown',
-      state: 'USA',
-      sapid: '123456789',
-      key: '1',
-    },
-    '2': {
-      id: '2',
-      name: 'Jane Smith',
-      phone: '0987654321',
-      email: 'jane.smith@example.com',
-      address: '456 Second St.',
-      city: 'Somewhere',
-      state: 'USA',
-      sapid: '987654321',
-      key: '2',
-    },
-  });
+  t.deepEqual(search.index._docs, Object.values(testObject));
 });
 
-test('should throw an error if no matches are found', async (t) => {
-  try {
-    await search.query({ config: { element: { name: 'Mary Johnson' } } } as any);
-  } catch (error) {
-    t.deepEqual(error, new Error('No matches found'));
-  }
+test('Query should return no results if no matches are found', async (t) => {
+  const res = search.query({ config: { element: { name: 'Mary Johnson' } } } as any);
+  t.is(res.matches.length, 0);
 });
 
-test('should return a match if one is found', async (t) => {
+test('Query should return a match if one is found', async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
   search.setCollection(search.indexObject);
-  const result = (await search.query({ config: { element: { name: 'Jane Smith' } } } as any)) as any[];
+  const result = search.query({ config: { element: { name: 'Jane Smith' } } });
 
-  t.deepEqual(result![0].item, { key: '2', ...search.indexObject['2'] });
+  t.deepEqual(result.matches![0].item, { key: '2', ...search.indexObject['2'] });
 });
 
-test('should return matches if multiple are found', async (t) => {
+test('Query should return matches if multiple are found', async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
   search.setCollection(search.indexObject);
-  const result = (await search.query({ config: { element: { state: 'USA', email: 'h@example.com'} } } as any)) as any[];
+  const result = search.query({ config: { element: { state: 'USA', email: 'h@example.com'} } });
 
-  t.is(result.length, 2);
-  t.deepEqual(result![0].item, {key: '2', ...search.indexObject['2']});
-  t.deepEqual(result![1].item, {key: '1', ...search.indexObject['1']});
+  t.is(result.matches.length, 2);
+  t.deepEqual(result.matches![0].item, {key: '2', ...search.indexObject['2']});
+  t.deepEqual(result.matches![1].item, {key: '1', ...search.indexObject['1']});
 });
 
-test('Should add an item and return it when queried', async (t) => {
+test(`Query should return 'exact' matches if sapid exists on an entry`, async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
+  search.setCollection(search.indexObject);
+  const result = search.query({ config: { element: { sapid: '123456789' } }});
+
+  t.is(result.matches.length, 1);
+  t.is(result.exact, true);
+  t.deepEqual(result.matches![0].item, testObject['1']);
+});
+
+test(`Query should return 'exact' matches if masterid exists on an entry`, async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
+  search.setCollection(search.indexObject);
+  const result = search.query({ config: { element: { masterid: 'resources/123456789' }}});
+
+  t.is(result.matches.length, 1);
+  t.is(result.exact, true);
+  t.deepEqual(result.matches![0].item, testObject['1']);
+});
+
+test(`Query should return 'exact' matches if sapid and masterid both exist on an entry`, async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
+  search.setCollection(search.indexObject);
+  const result = search.query({ config: { element: {
+    masterid: 'resources/123456789',
+    sapid: '123456789',
+  }}});
+
+  t.is(result.matches.length, 1);
+  t.is(result.exact, true);
+  t.deepEqual(result.matches![0].item, testObject['1']);
+});
+
+test(`Query should return no 'exact' matches if sapid and masterid exist on separate entries`, async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
+  search.setCollection(search.indexObject);
+  const result = search.query({ config: { element: {
+    masterid: 'resources/123456789',
+    sapid: '987654321',
+  }}});
+
+  t.is(result.matches.length, 0);
+  t.falsy(result.exact);
+});
+
+test('setItem should add an item and return it when queried', async (t) => {
+  search.indexObject = _.cloneDeep(testObject);
+  search.setCollection(search.indexObject);
   const item = { id: '123', name: 'John Doe', phone: '123-456-7890' };
   await search.setItem({item, pointer: item.id});
-  const result = (await search.query({ config: { element: { name: 'John Doe' } } })) as any[];
-  t.is(result.length, 2);
-  t.deepEqual(result![0].item.name, 'John Doe');
-  t.deepEqual(result![1].item.name, 'John Doe');
+  const result = search.query({ config: { element: { name: 'John Doe' } } });
+  t.is(result.matches.length, 2);
+  t.deepEqual(result.matches![0].item.name, 'John Doe');
+  t.deepEqual(result.matches![1].item.name, 'John Doe');
 });
 
-test('should update an item and return it when queried', async (t) => {
+test('setItem should update an existing item and return it when queried', async (t) => {
   search.indexObject = _.cloneDeep(testObject);
   search.setCollection(search.indexObject);
   const updatedItem = { ...testObject['1'], phone: '098-765-4321' };
   await search.setItem({ item: updatedItem, pointer: updatedItem.id });
-  const result = (await search.query({ config: { element: { name: 'John Doe' } } })) as any[];
-  t.deepEqual(result![0].item, updatedItem);
+  const result = search.query({ config: { element: { name: 'John Doe' } } });
+  t.deepEqual(result.matches![0].item, updatedItem);
+  t.is(Object.keys(testObject).length, 2);
+  t.is(search.index._docs.length, 2);
 });
 
-test('should remove an item and not return it when queried', async (t) => {
+test('removeItem should remove an item and not return it when queried', async (t) => {
   search.indexObject = _.cloneDeep(testObject);
   search.setCollection(search.indexObject);
   await search.removeItem({pointer: testObject['1'].id});
-  const result = (await search.query({ config: { element: { name: 'John Doe' } } })) as any[];
-  t.is(result.length, 0);
+  const result = search.query({ config: { element: { name: 'John Doe' } } });
+  t.is(result.matches.length, 0);
 });
-
-test('should throw an error when querying with no matches', async (t) => {
-  search.indexObject = _.cloneDeep(testObject);
-  search.setCollection(search.indexObject);
-  // @ts-ignore
-  const err = await t.throwsAsync(async () => await search.query({ config: { element: { name: 'Bob Vila' } } }));
-  t.deepEqual(err!.message,'No matches found');
-});
-
-/*
-test('should throw an error when ensuring with multiple matches', async (t) => {
-  const item1 = { id: '123', name: 'John Doe', phone: '123-456-7890' };
-  const item2 = { id: '456', name: 'John Doe', phone: '098-765-4321' };
-  await search.setItem({pointer: item1.id, item: item1});
-  await search.setItem({pointer: item2.id, item: item2});
-  // @ts-ignore
-  const err = await t.throwsAsync(async () => await search.ensure({ config: { element: { name: 'John Doe' } } }))
-  t.deepEqual(err!.message,'multiple matches found');
-});
-*/
 
 /* assertion really cannot fail so long as items are created from the base template...
-test.only('should create an entry if none exist when ensuring', async (t) => {
+test('should create an entry if none exist when ensuring', async (t) => {
   const item = { name: 'Jane Doe', phone: '123-456-7890' };
   // @ts-ignore
   const err = await t.throwsAsync(async () => await search.ensure({ config: { element: item } }))
@@ -290,13 +298,12 @@ test('Ensure should return the created thing if it does not exist', async (t) =>
 
 test('Ensure should return exact matches based on masterid only', async (t) => {
   // Setup things
-  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777' };
-  // Run ensure
+  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777', masterid: 'resources/abc123' };
   await search.ensure({ config: { element: item1 }});
-  // Set these things here because the listener isn't running
-  //search.indexObject = { [item1.id]: item1};
-  //search.setCollection(search.indexObject);
-  const result = await search.ensure({ config: { element: item1 }});
+
+  // Call ensure on the thing we want to test
+  const item2 = { id: '777', name: 'Sam D.', phone: '111-111-1111', masterid: 'resources/abc123' };
+  const result = await search.ensure({ config: { element: item2 }});
 
   //Test
   t.is(result.exact, true);
@@ -308,59 +315,59 @@ test('Ensure should return exact matches based on masterid only', async (t) => {
   t.assert(result.entry.masterid);
 });
 
-test.only('Ensure should return exact matches based on sapid only', async (t) => {
+test('Ensure should return exact matches based on sapid only', async (t) => {
   // Setup things
-  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777' };
-  // Run ensure
+  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777', sapid: 'test111', masterid: 'resources/abc123' };
   await search.ensure({ config: { element: item1 }});
-  // Set these things here because the listener isn't running
-  //search.indexObject = { [item1.id]: item1};
-  //search.setCollection(search.indexObject);
-  const result = await search.ensure({ config: { element: item1 }});
+
+  // Call ensure on the thing we want to test
+  const item2 = { id: '777', name: 'Sam D.', phone: '111-111-1111', sapid: 'test111' };
+  const result = await search.ensure({ config: { element: item2 }});
 
   //Test
-  t.is(result.new, false);
-  t.assert(result.matches);
-  t.is(result.matches.length, 1);
-  t.is(result.matches[0].item.phone, item1.phone);
-  t.is(result.matches[0].item.name, item1.name);
-  t.is(result.matches[0].item.id, item1.id);
+  t.falsy(result.new);
+  t.assert(result.entry);
+  t.is(result.exact, true);
+  t.is(result.entry.phone, item1.phone);
+  t.is(result.entry.name, item1.name);
+  t.is(result.entry.id, item1.id);
 });
 
-test('Ensure should return exact matches if 100% match on non-sapid/masterid keys', async (t) => {
+test('Ensure should return exact matches if the input is 100% intersection with an existing entry (non-sapid/masterid keys)', async (t) => {
   // Setup things
-  const item1 = { name: 'Sam Doe', phone: '777-777-7777', city: 'Testville' };
-  // Run ensure
+  const item1 = { id: '765', name: 'Sam Doe', phone: '777-777-7777', sapid: 'test111' };
   await search.ensure({ config: { element: item1 }});
-  // Set these things here because the listener isn't running
-  //search.indexObject = { [item1.id]: item1};
-  //search.setCollection(search.indexObject);
-  const result = await search.ensure({ config: { element: item1 }});
+
+  // Call ensure on the thing we want to test
+  const item2 = { name: 'Sam Doe', phone: '777-777-7777' };
+  const result = await search.ensure({ config: { element: item2 }});
 
   //Test
-  t.is(result.new, false);
-  t.assert(result.matches);
-  t.is(result.matches.length, 1);
-  t.is(result.matches[0].item.phone, item1.phone);
-  t.is(result.matches[0].item.name, item1.name);
-  t.is(result.matches[0].item.id, item1.city);
+  t.falsy(result.new);
+  t.assert(result.entry);
+  t.is(result.exact, true);
+  t.is(result.entry.phone, item1.phone);
+  t.is(result.entry.name, item1.name);
+  t.is(result.entry.sapid, item1.sapid);
+  t.is(result.entry.id, item1.id);
+  t.assert(result.entry.masterid);
+
 });
 
 test('Ensure should return multiple exact matches on sapid', async (t) => {
   // Setup things
-  const item1 = { name: 'Sam Doe', phone: '777-777-7777', city: 'Testville' };
-  // Run ensure
-  await search.ensure({ config: { element: item1 }});
-  // Set these things here because the listener isn't running
-  //search.indexObject = { [item1.id]: item1};
-  //search.setCollection(search.indexObject);
-  const result = await search.ensure({ config: { element: item1 }});
+  const sapid = 'abc123';
+  const item1 = { name: 'Sam Doe', phone: '777-777-7777', city: 'Testville', sapid};
+  const item2 = { id: '777', name: 'Sam D.', phone: '111-111-1111', sapid };
+  search.indexObject = {'111': item1, '222': item2 };
+  search.setCollection(search.indexObject);
+  const result = await search.ensure({ config: { element: { sapid }}});
 
   //Test
-  t.is(result.new, false);
+  t.falsy(result.new);
+  t.assert(result.exact);
   t.assert(result.matches);
-  t.is(result.matches.length, 1);
-  t.is(result.matches[0].item.phone, item1.phone);
-  t.is(result.matches[0].item.name, item1.name);
-  t.is(result.matches[0].item.id, item1.city);
+  t.is(result.matches!.length, 2);
+  t.is(result.matches![0].item.sapid, sapid);
+  t.is(result.matches![1].item.sapid, sapid);
 });

@@ -176,7 +176,7 @@ export class Search<Element extends ElementBase> {
     this.index.setCollection(collection);
   }
 
-  query(job: { config: { element: Element } }) {
+  query(job: { config: { element: Element } }): QueryResult {
     const element = Object.fromEntries(
       // Remove empty string/undefined values from the object
       Object.entries(job?.config?.element || {}).filter(([k, _]) =>
@@ -187,31 +187,38 @@ export class Search<Element extends ElementBase> {
       throw new Error('Invalid input search element at job.config.element');
 
     // First find exact matches using primary keys
-    if (element.sapid ?? element.id) {
+    if (element.sapid ?? element.masterid) {
       const exactMatches = this.exactSearch(element);
-      if (exactMatches.length > 0) return {...exactMatches, exact: true };
+      if (exactMatches.length > 0) return { matches: exactMatches, exact: true };
+      // If the only keys present are sapid and/or masterid, do not proceed to fuzzy search
+      if ((element.sapid || element.masterid) && Object.keys(element).length === 1) {
+        return {matches: exactMatches };
+      }
+      if (Boolean(element.sapid && element.masterid) && Object.keys(element).length === 2) {
+        return { matches: exactMatches };
+      }
     }
 
     // Finally, try regular search
-    return this.index.search(element);
+    return { matches: this.index.search(element)};
   }
 
-  async ensure(job: { config: { element: Element } }) {
-    const matches = this.query(job);
-    if (matches.length > 0) {
-      if (matches.exact) {
-        if (matches.length === 1) {
+  async ensure(job: { config: { element: Element } }): Promise<EnsureResult> {
+    const queryResult = this.query(job);
+    if (queryResult.matches.length > 0) {
+      if (queryResult.exact) {
+        if (queryResult.matches.length === 1) {
           log.info(`An exact match on 'sapid' or 'masterid' was found for input ${job.config.element}. Returning match.`);
-          return { entry: matches[0].item, exact: true }
+          return { entry: queryResult.matches[0].item, exact: true }
         }
-        if (matches.length > 1) {
-          log.error(`Multiple exact matches on 'sapid' or 'masterid' already exist for input ${job.config.element}.`);
-        return matches;
+        if (queryResult.matches.length > 1) {
+          log.warn(`Multiple exact matches on 'sapid' or 'masterid' were found for input ${job.config.element}.`);
+        return queryResult;
         }
       // Use partial() instead of fuse scoring here to gain more certainty...
-      } else if (matches.length === 1 && partial(matches[0].item, job.config.element)) {
+      } else if (queryResult.matches.length === 1 && partial(queryResult.matches[0].item, job.config.element)) {
         log.info(`An exact match was found on the input data (100% intersection). Returning match.`);
-        return { entry: matches[0].item, exact: true }
+        return { entry: queryResult.matches[0].item, exact: true }
       }
     }
     log.info('No exact matches were found. Creating a new entry.')
@@ -229,21 +236,14 @@ export class Search<Element extends ElementBase> {
   }
 
   exactSearch(element: any) {
-    if (element.sapid) {
-      const exactMatches = this.index.search({ sapid: element.sapid });
-      if (exactMatches.length === 1) {
-        log.info(`Found exact match from sapid ${element.sapid}`);
-        return exactMatches;
-      }
-    }
-    if (element.masterid) {
-      const exactMatches = this.index.search({ masterid: element.masterid });
-      if (exactMatches.length === 1) {
-        log.info(`Found exact match from masterid ${element.masterid}`);
-        return exactMatches;
-      }
-    }
-    return []
+    let object : any = {};
+    if (element.sapid) object.sapid = element.sapid;
+    if (element.masterid) object.masterid = element.masterid;
+    const exactMatches = this.index.search(object);
+    if (exactMatches.length > 0)
+      log.info(`Found match from sapid/masterid: ${object}`);
+    // A hack to return exact matches only
+    return exactMatches.filter(({item}: {item: any}) => partial(item, object));
   }
 
   async setItem({item, pointer}: {item: any, pointer: string}) {
@@ -347,4 +347,16 @@ export class Search<Element extends ElementBase> {
       throw error_;
     }
   }
+}
+
+export type EnsureResult = {
+  entry?: any;
+  matches?: any[];
+  exact?: boolean;
+  new?: boolean;
+}
+
+export type QueryResult = {
+  matches: any[];
+  exact?: boolean;
 }
