@@ -16,30 +16,19 @@
  */
 
 import config from './config.masterdata.js';
-
-//import { setTimeout } from 'node:timers/promises';
-
 import debug from 'debug';
 import _ from 'lodash';
-
 import type { OADAClient } from '@oada/client';
-
 import tree from './tree.masterData.js';
 
 const SERVICE_NAME = config.get('service.name');
-// TL_TP: string = config.get('trellis.endpoints.service-tp');
-//const TL_TP = `/bookmarks/trellisfw/trading-partners`;
-//const TL_TP_MI = `${TL_TP}/masterid-index`;
-//const TL_TP_EI = `${TL_TP}/expand-index`;
 
-//let oada: OADAClient;
 if (SERVICE_NAME && tree?.bookmarks?.services?.['fl-sync']) {
   tree.bookmarks.services[SERVICE_NAME] = tree.bookmarks.services['fl-sync'];
 }
 
 const info = debug('trellis-data-manager:trading-partners:info');
 const error = debug('trellis-data-manager:trading-partners:error');
-//const trace = debug('trellis-data-manager:trading-partners:trace');
 
 export const trellisTPTemplate = {
   id: '',
@@ -80,7 +69,7 @@ export interface TradingPartner {
   };
   shared: {
     _id: string;
-  }
+  };
 }
 
 export async function generateTP(data: any, oada: OADAClient) {
@@ -124,6 +113,6 @@ export async function generateTP(data: any, oada: OADAClient) {
     },
     shared: {
       _id: sharedId,
-    }
-  }
+    },
+  };
 }

@@ -35,7 +35,7 @@ const log = {
 };
 
 type ElementBase = {
-  id?: string;
+  masterid?: string;
 };
 
 export class Search<Element extends ElementBase> {
@@ -159,8 +159,8 @@ export class Search<Element extends ElementBase> {
       config.get('timeouts.query'),
       this.create.bind(this) as unknown as WorkerFunction
     );
-    */
     log.info(`Started ${this.name}-create listener.`);
+    */
     this.service.on(
       `${this.name}-ensure`,
       config.get('timeouts.query'),
@@ -209,16 +209,16 @@ export class Search<Element extends ElementBase> {
       if (queryResult.exact) {
         if (queryResult.matches.length === 1) {
           log.info(`An exact match on 'sapid' or 'masterid' was found for input ${job.config.element}. Returning match.`);
-          return { entry: queryResult.matches[0].item, exact: true }
+          return { entry: queryResult.matches[0].item, ...queryResult }
         }
         if (queryResult.matches.length > 1) {
           log.warn(`Multiple exact matches on 'sapid' or 'masterid' were found for input ${job.config.element}.`);
-        return queryResult;
+          return { ...queryResult };
         }
       // Use partial() instead of fuse scoring here to gain more certainty...
       } else if (queryResult.matches.length === 1 && partial(queryResult.matches[0].item, job.config.element)) {
         log.info(`An exact match was found on the input data (100% intersection). Returning match.`);
-        return { entry: queryResult.matches[0].item, exact: true }
+        return { entry: queryResult.matches[0].item, ...queryResult }
       }
     }
     log.info('No exact matches were found. Creating a new entry.')
@@ -232,7 +232,7 @@ export class Search<Element extends ElementBase> {
       throw error_;
       // Undo generate steps
     }
-    return { new: true, entry };
+    return { new: true, entry, ...queryResult };
   }
 
   exactSearch(element: any) {

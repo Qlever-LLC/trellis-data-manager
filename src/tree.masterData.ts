@@ -29,7 +29,6 @@ export const tree: Tree = {
           indexings: {
             'expand-index': {
               '_type': 'application/vnd.trellisfw.trading-partners.1+json',
-              '_rev': 0,
             }
           }
         },

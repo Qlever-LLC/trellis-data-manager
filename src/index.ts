@@ -19,7 +19,7 @@
 import '@oada/pino-debug';
 
 // Import this first to setup the environment
-import { assert as assertTP } from '@oada/types/trellis/service/master-data-sync/tradingpartners.js';
+import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
 import config from './config.js';
 import { connect } from '@oada/client';
 import debug from 'debug';
@@ -28,7 +28,7 @@ import { generateTP } from './trading-partners.js';
 import type { OADAClient } from '@oada/client';
 import { Search } from './search.js';
 import { Service } from '@oada/jobs';
-import type TradingPartner from '@oada/types/trellis/service/master-data-sync/tradingpartners.js';
+import type TradingPartner from '@oada/types/trellis/trading-partners/trading-partner.js';
 import { tree } from './tree.masterData.js';
 const log = {
   error: debug('tdm:error'),
@@ -38,7 +38,6 @@ const log = {
 
 const { token, domain } = config.get('oada');
 const { name: SERVICE_NAME } = config.get('service');
-
 const tradingPartner = `/bookmarks/trellisfw/trading-partners`;
 let oada: OADAClient;
 
@@ -64,7 +63,6 @@ export async function run() {
     await svc.start();
     // Set the job type handlers
     const m = new Search<TradingPartner>({
-      //client,
       oada: conn,
       path: tradingPartner,
       name: 'trading-partners',
@@ -82,30 +80,6 @@ export async function run() {
 
   log.info('Started trellis-data-manager');
 }
-
-/*
-mappings: {
-      properties: {
-        id: { type: 'text' },
-        sapid: { type: 'text' },
-        masterid: { type: 'text' },
-        internalid: { type: 'text' },
-        companycode: { type: 'text' },
-        vendorid: { type: 'text' },
-        partnerid: { type: 'text' },
-        name: { type: 'text' },
-        address: { type: 'text' },
-        city: { type: 'text' },
-        state: { type: 'text' },
-        type: { type: 'text' },
-        source: { type: 'text' },
-        coi_emails: { type: 'text' },
-        fsqa_emails: { type: 'text' },
-        email: { type: 'text' },
-        phone: { type: 'text' },
-      },
-    },
-*/
 
 if (esMain(import.meta)) {
   log.info('Starting up the service. Calling initialize');
