@@ -203,20 +203,25 @@ export class Search<Element extends ElementBase> {
       throw new Error('Invalid input search element at job.config.element');
 
     // First find exact matches using primary keys
-    const exactMatches = {
-      matches: this.exactSearch(element),
-      exact: true,
-    };
-    // Return exact matches if there are any results or if the only keys present are exactMatch keys
+    const exactMatches = this.exactSearch(element);
+
+    // Do not proceed if the only keys present are exactMatch keys
     if (
       exactMatches.matches.length > 0 ||
       !this.searchKeysList.some((k) => k in element)
     )
-      return exactMatches;
+      return { exact: true, ...exactMatches };
 
-    // Finally, try regular search
+    const searchResult = this.index.search(element);
+    if (searchResult.matches.length === 1 && partial(searchResult.matches[0].item, job.config.element)) {
+      log.info(
+        `An exact match was found on the input data (100% intersection). Returning match.`
+      );
+      return { ...searchResult, exact: true}
+    }
+
     // Create permutations of element keys, search them, and compile results
-    return { matches: this.index.search(element)};
+    return searchResult;
   }
 
   async ensure(job: { config: { element: Element } }): Promise<EnsureResult> {
@@ -228,10 +233,11 @@ export class Search<Element extends ElementBase> {
           return { entry: queryResult.matches[0].item, ...queryResult };
         }
         if (queryResult.matches.length > 1) {
-          log.warn(`Multiple exact matches on 'sapid' or 'masterid' were found for input ${job.config.element}.`);
+          log.warn(`Multiple exact matches were found for input ${job.config.element}.`);
           return { ...queryResult };
         }
       // Use partial() instead of fuse scoring here to gain more certainty...
+      // TODO: Is partial here still necessary? All query-like things ought just get done in query
       } else if (queryResult.matches.length === 1 && partial(queryResult.matches[0].item, job.config.element)) {
         log.info(`An exact match was found on the input data (100% intersection). Returning match.`);
         return { entry: queryResult.matches[0].item, ...queryResult }
