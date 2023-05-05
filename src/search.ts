@@ -51,16 +51,18 @@ export class Search<Element extends ElementBase> {
   // The path of the list of master data elements
   path: string;
   // The set of keys used to search on the element list
-  searchKeys: any[];
-  searchKeysList: any[];
+  searchKeys: Array<string | { name: string; weight: number }>;
+  searchKeysList: string[];
   // The associated service
   service: Service;
   // An object representation of the set of known elements for the purpose of
   // handling changes and updating the search index more easily.
   indexObject: Record<string, Element>;
+  exactKeys?: string[];
   //Assert function
   assert?: any;
   generate?: any;
+  merge?: any;
   // The watch on the list of known elements, tracking add/remove/update
   #watch?: ListWatch;
 
@@ -68,33 +70,42 @@ export class Search<Element extends ElementBase> {
     assert,
     tree,
     generate,
+    merge,
     oada,
     path,
     name,
     service,
+    searchKeys,
+    exactKeys,
   }: {
-    assert?: any;
     tree: Tree;
+    assert?: any;
     generate?: any;
+    merge?: any;
     oada: OADAClient;
     path: string;
     name: string;
     service: Service;
+    searchKeys?: Array<string | { name: string; weight: number }>;
+    exactKeys?: string[];
   }) {
     this.assert = assert;
     this.tree = tree;
     this.generate = generate;
+    this.merge = merge;
     this.name = name;
     this.oada = oada;
     this.path = path;
     this.expandIndexPath = `${path}/_meta/indexings/expand-index`;
     this.service = service;
-    this.searchKeys = [{name: 'name', weight: 2}, 'phone', 'email', 'address', 'city', 'state', 'sapid', 'masterid'];
+    this.searchKeys = searchKeys ?? [];
     this.searchKeysList = this.searchKeys.map((i) => typeof(i) === 'string' ? i : i.name);
+    this.exactKeys = [...new Set([...(exactKeys ?? []), 'masterid', 'externalIds'])];
     const options = {
       includeScore: true,
-      keys: this.searchKeys,
+      keys: [...this.searchKeys, ...this.exactKeys],
       ignoreLocation: true,
+      useExtendedSearch: true,
     };
     this.index = new Fuse([], options);
     this.indexObject = {};
@@ -153,20 +164,25 @@ export class Search<Element extends ElementBase> {
       this.query.bind(this) as unknown as WorkerFunction
     );
     log.info(`Started ${this.name}-query listener.`);
-    /*
     this.service.on(
-      `${this.name}-create`,
+      `${this.name}-generate`,
       config.get('timeouts.query'),
-      this.create.bind(this) as unknown as WorkerFunction
+      this.#generate.bind(this) as unknown as WorkerFunction
     );
-    log.info(`Started ${this.name}-create listener.`);
-    */
+    log.info(`Started ${this.name}-generate listener.`);
     this.service.on(
       `${this.name}-ensure`,
       config.get('timeouts.query'),
       this.ensure.bind(this) as unknown as WorkerFunction
     );
     log.info(`Started ${this.name}-ensure listener.`);
+    this.service.on(
+      `${this.name}-merge`,
+      config.get('timeouts.query'),
+      this.#merge.bind(this) as unknown as WorkerFunction
+    );
+    log.info(`Started ${this.name}-query listener.`);
+
   }
 
   setCollection(data: Record<string, Element>) {
@@ -180,26 +196,26 @@ export class Search<Element extends ElementBase> {
     const element = Object.fromEntries(
       // Remove empty string/undefined values from the object
       Object.entries(job?.config?.element || {}).filter(([k, _]) =>
-        this.searchKeysList.includes(k)
+        this.searchKeysList.includes(k) || this.exactKeys?.includes(k)
       )
     );
     if (!element || element === undefined || Object.keys(element).length === 0)
       throw new Error('Invalid input search element at job.config.element');
 
     // First find exact matches using primary keys
-    if (element.sapid ?? element.masterid) {
-      const exactMatches = this.exactSearch(element);
-      if (exactMatches.length > 0) return { matches: exactMatches, exact: true };
-      // If the only keys present are sapid and/or masterid, do not proceed to fuzzy search
-      if ((element.sapid || element.masterid) && Object.keys(element).length === 1) {
-        return {matches: exactMatches };
-      }
-      if (Boolean(element.sapid && element.masterid) && Object.keys(element).length === 2) {
-        return { matches: exactMatches };
-      }
-    }
+    const exactMatches = {
+      matches: this.exactSearch(element),
+      exact: true,
+    };
+    // Return exact matches if there are any results or if the only keys present are exactMatch keys
+    if (
+      exactMatches.matches.length > 0 ||
+      !this.searchKeysList.some((k) => k in element)
+    )
+      return exactMatches;
 
     // Finally, try regular search
+    // Create permutations of element keys, search them, and compile results
     return { matches: this.index.search(element)};
   }
 
@@ -208,8 +224,8 @@ export class Search<Element extends ElementBase> {
     if (queryResult.matches.length > 0) {
       if (queryResult.exact) {
         if (queryResult.matches.length === 1) {
-          log.info(`An exact match on 'sapid' or 'masterid' was found for input ${job.config.element}. Returning match.`);
-          return { entry: queryResult.matches[0].item, ...queryResult }
+          log.info(`An exact match was found for input ${job.config.element}. Returning match.`);
+          return { entry: queryResult.matches[0].item, ...queryResult };
         }
         if (queryResult.matches.length > 1) {
           log.warn(`Multiple exact matches on 'sapid' or 'masterid' were found for input ${job.config.element}.`);
@@ -226,7 +242,7 @@ export class Search<Element extends ElementBase> {
     //Otherwise, create it
     let entry;
     try {
-      entry = await this.#generate(job.config.element);
+      entry = await this.#generate(job);
       if (this.assert) this.assert(entry);
     } catch (error_: unknown) {
       throw error_;
@@ -235,6 +251,21 @@ export class Search<Element extends ElementBase> {
     return { new: true, entry, ...queryResult };
   }
 
+  // Attempt to find exact matches using identifiers
+  exactSearch(element: any) {
+    const exactString = (this.exactKeys ?? [])
+      .filter((ek) => element[ek])
+      .map((ek) =>
+        typeof ek === 'string'
+          ? `=${element[ek]}`
+          : (element[ek].map((k: any) => `=${k}`).join(' | '))
+      )
+      .join(` | `);
+
+    return this.index.search(exactString);
+  }
+
+  /*
   exactSearch(element: any) {
     let object : any = {};
     if (element.sapid) object.sapid = element.sapid;
@@ -245,6 +276,7 @@ export class Search<Element extends ElementBase> {
     // A hack to return exact matches only
     return exactMatches.filter(({item}: {item: any}) => partial(item, object));
   }
+  */
 
   async setItem({item, pointer}: {item: any, pointer: string}) {
     const id = pointer.replace(/^\//, '');
@@ -298,6 +330,7 @@ export class Search<Element extends ElementBase> {
         data: {
           [key]: data,
         },
+        tree: this.tree,
       });
       log.info(`Expand index updated at ${this.expandIndexPath}/${key}.`);
     } catch (error_: unknown) {
@@ -305,17 +338,20 @@ export class Search<Element extends ElementBase> {
     }
   } // UpdateExpandIndex
 
-  async #generate(data: any) {
+  async #generate(job: { config: { element: Element } }): Promise<Element> {
+    let data = job?.config?.element;
     try {
-      data = this.generate ? await this.generate(data, this.oada, this.path) : data;
-      // I insist on making the key equal to the resource id for something like
-      // master data elements so lets do it this way instead of tree POST
+      const linkData = this.generate ? await this.generate(this.oada) : {};
+      // Make the key equal to the resource id instead of tree POST
       const ptr = JsonPointer.create(`${this.path}/*/_type`);
       const { headers } = await this.oada.post({
         path: `/resources`,
-        data,
+        data: {
+          ...data,
+          ...linkData,
+        },
         contentType: ptr.get(this.tree) as string,
-      })
+      });
       const location = headers['content-location'];
       const _id = location!.replace(/^\//, '');
       const key = location!.replace(/^\/resources\//, '');
@@ -323,29 +359,59 @@ export class Search<Element extends ElementBase> {
       // Add the masterid to itself
       await this.oada.put({
         path: location!,
-        data: { masterid: _id }
+        data: { masterid: _id },
       });
 
       // Make the link
       await this.oada.put({
         path: this.path,
-        data: { [key]: { _id, _rev: 0} },
-      })
+        data: { [key]: { _id, _rev: 0 } },
+      });
       log.info(`Added item to list at: ${this.path}/${key}`);
 
-      data = { ...data, masterid: _id }
+      data = { ...data, masterid: _id };
 
       // Update the expand index
       // FYI: data does not contain _id so it is safe to send to
       await this.updateExpandIndex(data, key, this.oada);
       log.info('Added item to the expand-index ', data.masterid);
       //Optimistic add to collection so we don't wait for things
-      await this.setItem({pointer: key, item: data});
+      await this.setItem({ pointer: key, item: data });
       return data;
     } catch (error_: unknown) {
       log.error('Generate Errored:', error_);
       throw error_;
     }
+  }
+
+  async #merge(job: {
+    config: {
+      from: string;
+      to: string;
+      externalIds?: string | string[];
+    };
+  }): Promise<void> {
+    // Each externalid may be in use by one trading partner-- and it should be involved in the
+    // merge operation
+    const { externalIds } = job.config;
+    let xids = externalIds ? (Array.isArray(externalIds) ? externalIds : [externalIds]) : [];
+    xids = xids.filter((xid) => {
+      const matches = this.index.search(`=${xid}`);
+      return (
+        matches.length > 1 ||
+        (matches.length === 1 &&
+          ![job.config.to, job.config.from].includes(
+            matches[0].item.masterid
+          )
+        )
+      );
+    });
+
+    if (xids.length > 0)
+      throw new Error(
+        `External IDs supplied to merge opperation are already in use by non-merging entities: ${xids}`
+      );
+    await this.merge(this.oada, job);
   }
 }
 

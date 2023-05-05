@@ -20,6 +20,7 @@ import debug from 'debug';
 import _ from 'lodash';
 import type { OADAClient } from '@oada/client';
 import tree from './tree.masterData.js';
+//import type TradingPartner from '@oada/types/trellis/trading-partners/trading-partner.js';
 
 const SERVICE_NAME = config.get('service.name');
 
@@ -32,7 +33,6 @@ const error = debug('trellis-data-manager:trading-partners:error');
 
 export const trellisTPTemplate = {
   id: '',
-  sapid: '',
   masterid: '',
   companycode: '',
   vendorid: '',
@@ -46,11 +46,11 @@ export const trellisTPTemplate = {
   fsqa_emails: '',
   email: '',
   phone: '',
+  externalIds: [],
 };
 
 export interface TradingPartner {
   id: string;
-  sapid: string;
   masterid: string;
   companycode?: string;
   vendorid?: string;
@@ -70,9 +70,11 @@ export interface TradingPartner {
   shared: {
     _id: string;
   };
+  externalIds: string[];
+  frozen: boolean;
 }
 
-export async function generateTP(data: any, oada: OADAClient) {
+export async function generateTP(oada: OADAClient) {
   // Create bookmarks
   let bookmarks;
   try {
@@ -88,7 +90,7 @@ export async function generateTP(data: any, oada: OADAClient) {
   }
 
   const bookmarksId = bookmarks!.replace(/^\//, '');
-  info(`/bookmarks created for trading partner masterid: ${data.masterid}`);
+  info(`/bookmarks created for trading partner`);
 
   let shared;
   try {
@@ -104,10 +106,10 @@ export async function generateTP(data: any, oada: OADAClient) {
   }
 
   const sharedId = shared!.replace(/^\//, '');
-  info(`/shared created for trading partner masterid: ${data.masterid}`);
+  info(`/shared created for trading partner`);
 
   return {
-    ...trellisTPTemplate,
+    //...trellisTPTemplate,
     bookmarks: {
       _id: bookmarksId,
     },
@@ -115,4 +117,89 @@ export async function generateTP(data: any, oada: OADAClient) {
       _id: sharedId,
     },
   };
+}
+
+const basePath = (string_: string) =>
+  `/bookmarks/trellisfw/trading-partners/${string_}/bookmarks/trellisfw/documents`;
+
+async function mergeDocTree(oada: OADAClient, from: string, to: string) {
+  // 1. record the bookmarks/shared used originally
+  // 2. merge the two trees
+  const { data: docTypes } = await oada.get({ path: basePath(from) });
+  const docTypeKeys = Object.keys(docTypes ?? {}).filter((k) => !k.startsWith('_'));
+
+  for await (const type of docTypeKeys) {
+    const { data: docType } = await oada.get({
+      path: `${basePath(from)}/${type}`,
+    });
+    const docKeys = Object.keys(docType ?? {}).filter(
+      (k) => !k.startsWith('_')
+    );
+
+    for await (const docKey of docKeys) {
+      const { data: docs } : {data?: any}= await oada.get({ path: `${basePath(from)}/${type}` })
+      await oada.put({
+        path: `${basePath(to)}/${type}`,
+        tree,
+        data: {
+          [docKey]: docs![docKey]!,
+        }
+      })
+    }
+  }
+}
+
+export interface TradingPartnerMergeJob {
+  config: {
+    from: string;
+    to: string;
+    externalIds?: string[];
+  };
+}
+
+export async function mergeTPs(oada: OADAClient, job: TradingPartnerMergeJob) {
+  const { from, to, externalIds } = job.config;
+
+  // 1. record the bookmarks/shared used originally
+  const { data: fromTP } = (await oada.get({
+    path: `/bookmarks/trellisfw/trading-partners/${from}`,
+  })) as unknown as { data: TradingPartner };
+
+  const { data: toTP } = (await oada.get({
+    path: `/bookmarks/trellisfw/trading-partners/${to}`,
+  })) as unknown as { data: TradingPartner };
+
+  //2. Update the externalId so search results begin to refer to this trading partner
+  if (externalIds) {
+    await oada.put({
+      path: `/bookmarks/trellisfw/trading-partners/${to}`,
+      data: {
+        // @ts-expect-error fixme
+        externalIds: [...new Set((toTP!.externalIds || []).push(externalIds))] as string[],
+      },
+    });
+  }
+
+  // 3. Delete the trading-partner to fail them over during
+  await oada.delete({
+    path: `/bookmarks/trellisfw/trading-partners/${from}`,
+  });
+
+  // 4. merge the two trees
+  await mergeDocTree(oada, from, to);
+
+  // 5. move the trading-partner bookmarks/shared so any future references point in the right place
+  await oada.put({
+    path: `/bookmarks/trellisfw/trading-partners/${from}`,
+    data: {
+      masterid: toTP.masterid,
+      bookmarks: toTP.bookmarks,
+      shared: toTP.shared,
+      old: {
+        bookmarks: fromTP.bookmarks,
+        shared: fromTP.shared,
+      },
+      frozen: true,
+    },
+  });
 }

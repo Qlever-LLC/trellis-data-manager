@@ -1,6 +1,6 @@
 {
   "name": "@qlever-llc/trellis-data-manager",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A microservice for managing trellis master data elements.",
   "main": "dist/index.js",
   "type": "module",

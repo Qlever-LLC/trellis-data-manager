@@ -25,6 +25,7 @@ import { connect } from '@oada/client';
 import debug from 'debug';
 import esMain from 'es-main';
 import { generateTP } from './trading-partners.js';
+import { mergeTPs } from './trading-partners.js';
 import type { OADAClient } from '@oada/client';
 import { Search } from './search.js';
 import { Service } from '@oada/jobs';
@@ -69,7 +70,20 @@ export async function run() {
       service: svc,
       assert: assertTP,
       generate: generateTP,
+      merge: mergeTPs,
       tree,
+      // Get searchKeys from the schema somehow?
+      searchKeys: [
+        {
+          name: 'name',
+          weight: 2,
+        },
+        'phone',
+        'email',
+        'address',
+        'city',
+        'state',
+      ],
     });
     await m.init();
   } catch (cError: unknown) {
@@ -87,3 +101,6 @@ if (esMain(import.meta)) {
 } else {
   log.info('Just importing fl-sync');
 }
+
+export * as tradingPartners from './trading-partners.js';
+export * as search from './search.js';
