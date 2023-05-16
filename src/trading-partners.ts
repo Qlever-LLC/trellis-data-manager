@@ -17,10 +17,8 @@
 
 import config from './config.masterdata.js';
 import debug from 'debug';
-import _ from 'lodash';
 import type { OADAClient } from '@oada/client';
 import tree from './tree.masterData.js';
-//import type TradingPartner from '@oada/types/trellis/trading-partners/trading-partner.js';
 
 const SERVICE_NAME = config.get('service.name');
 
@@ -109,7 +107,6 @@ export async function generateTP(oada: OADAClient) {
   info(`/shared created for trading partner`);
 
   return {
-    //...trellisTPTemplate,
     bookmarks: {
       _id: bookmarksId,
     },
@@ -119,33 +116,29 @@ export async function generateTP(oada: OADAClient) {
   };
 }
 
-const basePath = (string_: string) =>
-  `/bookmarks/trellisfw/trading-partners/${string_}/bookmarks/trellisfw/documents`;
+async function mergeDocumentTree(oada: OADAClient, from: string, to: string) {
+  const fromPath = `/${from}/bookmarks/trellisfw/documents`;
+  const toPath = `/${to}/bookmarks/trellisfw/documents`;
 
-async function mergeDocTree(oada: OADAClient, from: string, to: string) {
-  // 1. record the bookmarks/shared used originally
-  // 2. merge the two trees
-  const { data: docTypes } = await oada.get({ path: basePath(from) });
-  const docTypeKeys = Object.keys(docTypes ?? {}).filter((k) => !k.startsWith('_'));
+  const { data: documentTypes } = await oada.get({ path: `/${fromPath}` });
+  const documentTypeKeys = Object.keys(documentTypes ?? {}).filter(
+    (k) => !k.startsWith('_')
+  );
 
-  for await (const type of docTypeKeys) {
-    const { data: docType } = await oada.get({
-      path: `${basePath(from)}/${type}`,
+  for await (const type of documentTypeKeys) {
+    const { data: documentType } = await oada.get({
+      path: `/${fromPath}/${type}`,
     });
-    const docKeys = Object.keys(docType ?? {}).filter(
-      (k) => !k.startsWith('_')
+    const documents = Object.fromEntries(
+      Object.entries(documentType ?? {}).filter(
+        ([key, _]) => !key.startsWith('_')
+      )
     );
-
-    for await (const docKey of docKeys) {
-      const { data: docs } : {data?: any}= await oada.get({ path: `${basePath(from)}/${type}` })
-      await oada.put({
-        path: `${basePath(to)}/${type}`,
-        tree,
-        data: {
-          [docKey]: docs![docKey]!,
-        }
-      })
-    }
+    await oada.put({
+      path: `${toPath}/${type}`,
+      tree,
+      data: documents,
+    });
   }
 }
 
@@ -158,44 +151,29 @@ export interface TradingPartnerMergeJob {
 }
 
 export async function mergeTPs(oada: OADAClient, job: TradingPartnerMergeJob) {
-  const { from, to, externalIds } = job.config;
+  const { from, to } = job.config;
 
-  // 1. record the bookmarks/shared used originally
+  // Record the bookmarks/shared used originally
   const { data: fromTP } = (await oada.get({
-    path: `/bookmarks/trellisfw/trading-partners/${from}`,
+    path: `/${from}`,
   })) as unknown as { data: TradingPartner };
 
   const { data: toTP } = (await oada.get({
-    path: `/bookmarks/trellisfw/trading-partners/${to}`,
+    path: `/${to}`,
   })) as unknown as { data: TradingPartner };
 
-  //2. Update the externalId so search results begin to refer to this trading partner
-  if (externalIds) {
-    await oada.put({
-      path: `/bookmarks/trellisfw/trading-partners/${to}`,
-      data: {
-        // @ts-expect-error fixme
-        externalIds: [...new Set((toTP!.externalIds || []).push(externalIds))] as string[],
-      },
-    });
-  }
+  await mergeDocumentTree(oada, from, to);
 
-  // 3. Delete the trading-partner to fail them over during
-  await oada.delete({
-    path: `/bookmarks/trellisfw/trading-partners/${from}`,
-  });
-
-  // 4. merge the two trees
-  await mergeDocTree(oada, from, to);
-
-  // 5. move the trading-partner bookmarks/shared so any future references point in the right place
+  // Move the trading-partner bookmarks/shared so any future references point
+  // in the right place
   await oada.put({
-    path: `/bookmarks/trellisfw/trading-partners/${from}`,
+    path: `/${from}`,
     data: {
       masterid: toTP.masterid,
       bookmarks: toTP.bookmarks,
       shared: toTP.shared,
       old: {
+        masterid: fromTP.masterid,
         bookmarks: fromTP.bookmarks,
         shared: fromTP.shared,
       },

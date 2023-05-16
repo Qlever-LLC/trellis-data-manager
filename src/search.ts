@@ -20,7 +20,6 @@ import type { OADAClient } from '@oada/client';
 import type { Tree } from '@oada/types/oada/tree/v1.js';
 import { ChangeType } from '@oada/list-lib';
 import Fuse from 'fuse.js';
-//import type { FuseResultMatch } from 'fuse.js';
 import { AssumeState, ListWatch } from '@oada/list-lib';
 import type { Service, WorkerFunction } from '@oada/jobs';
 import config from './config.js';
@@ -36,6 +35,7 @@ const log = {
 
 type ElementBase = {
   masterid?: string;
+  externalIds?: string[];
 };
 
 export class Search<Element extends ElementBase> {
@@ -59,7 +59,7 @@ export class Search<Element extends ElementBase> {
   // handling changes and updating the search index more easily.
   indexObject: Record<string, Element>;
   exactKeys?: string[];
-  //Assert function
+  // Assert function
   assert?: any;
   generate?: any;
   merge?: any;
@@ -99,8 +99,12 @@ export class Search<Element extends ElementBase> {
     this.expandIndexPath = `${path}/_meta/indexings/expand-index`;
     this.service = service;
     this.searchKeys = searchKeys ?? [];
-    this.searchKeysList = this.searchKeys.map((i) => typeof(i) === 'string' ? i : i.name);
-    this.exactKeys = [...new Set([...(exactKeys ?? []), 'masterid', 'externalIds'])];
+    this.searchKeysList = this.searchKeys.map((index) =>
+      typeof index === 'string' ? index : index.name
+    );
+    this.exactKeys = Array.from(
+      new Set(['masterid', 'externalIds'].concat(exactKeys ?? []))
+    );
     const options = {
       includeScore: true,
       keys: [...this.searchKeys, ...this.exactKeys],
@@ -167,7 +171,7 @@ export class Search<Element extends ElementBase> {
     this.service.on(
       `${this.name}-generate`,
       config.get('timeouts.query'),
-      this.#generate.bind(this) as unknown as WorkerFunction
+      this.generateElement.bind(this) as unknown as WorkerFunction
     );
     log.info(`Started ${this.name}-generate listener.`);
     this.service.on(
@@ -179,24 +183,25 @@ export class Search<Element extends ElementBase> {
     this.service.on(
       `${this.name}-merge`,
       config.get('timeouts.query'),
-      this.#merge.bind(this) as unknown as WorkerFunction
+      this.mergeElements.bind(this) as unknown as WorkerFunction
     );
     log.info(`Started ${this.name}-query listener.`);
-
   }
 
   setCollection(data: Record<string, Element>) {
-    const collection = Object.values(data)
-      .filter((value) => value !== undefined)
+    const collection = Object.values(data).filter(
+      (value) => value !== undefined
+    );
 
     this.index.setCollection(collection);
   }
 
   query(job: { config: { element: Element } }): QueryResult {
     const element = Object.fromEntries(
-      // Remove empty string/undefined values from the object
-      Object.entries(job?.config?.element || {}).filter(([k, _]) =>
-        this.searchKeysList.includes(k) || this.exactKeys?.includes(k)
+      // Remove non-searchable keys
+      Object.entries(job?.config?.element || {}).filter(
+        ([k, _]) =>
+          this.searchKeysList.includes(k) || this.exactKeys?.includes(k)
       )
     );
     if (!element || element === undefined || Object.keys(element).length === 0)
@@ -205,22 +210,12 @@ export class Search<Element extends ElementBase> {
     // First find exact matches using primary keys
     const exactMatches = this.exactSearch(element);
 
-    // Do not proceed if the only keys present are exactMatch keys
-    if (
-      exactMatches.matches.length > 0 ||
-      !this.searchKeysList.some((k) => k in element)
-    )
+    if (exactMatches.matches.length > 0)
       return { exact: true, ...exactMatches };
 
     const searchResult = this.index.search(element);
-    if (searchResult.matches.length === 1 && partial(searchResult.matches[0].item, job.config.element)) {
-      log.info(
-        `An exact match was found on the input data (100% intersection). Returning match.`
-      );
-      return { ...searchResult, exact: true}
-    }
 
-    // Create permutations of element keys, search them, and compile results
+    // TODO: Create permutations of element keys, search them, and compile results...
     return searchResult;
   }
 
@@ -229,62 +224,44 @@ export class Search<Element extends ElementBase> {
     if (queryResult.matches.length > 0) {
       if (queryResult.exact) {
         if (queryResult.matches.length === 1) {
-          log.info(`An exact match was found for input ${job.config.element}. Returning match.`);
-          return { entry: queryResult.matches[0].item, ...queryResult };
+          log.info(`An exact match was found. Returning match.`);
+          return {
+            entry: queryResult.matches[0].item,
+            ...queryResult,
+            new: false,
+          };
         }
-        if (queryResult.matches.length > 1) {
-          log.warn(`Multiple exact matches were found for input ${job.config.element}.`);
-          return { ...queryResult };
-        }
-      // Use partial() instead of fuse scoring here to gain more certainty...
-      // TODO: Is partial here still necessary? All query-like things ought just get done in query
-      } else if (queryResult.matches.length === 1 && partial(queryResult.matches[0].item, job.config.element)) {
-        log.info(`An exact match was found on the input data (100% intersection). Returning match.`);
-        return { entry: queryResult.matches[0].item, ...queryResult }
-      }
-    }
-    log.info('No exact matches were found. Creating a new entry.')
 
-    //Otherwise, create it
-    let entry;
-    try {
-      entry = await this.#generate(job);
-      if (this.assert) this.assert(entry);
-    } catch (error_: unknown) {
-      throw error_;
-      // Undo generate steps
+        if (queryResult.matches.length > 1) {
+          log.warn(`Multiple exact matches were found. Creating a new entry.`);
+        }
+      }
+    } else {
+      log.info('No exact matches were found. Creating a new entry.');
     }
+
+    // Otherwise, create it
+    // TODO: try catch with steps to undo the generate if necessary?
+    const entry = await this.generateElement(job);
+    if (this.assert) this.assert(entry);
     return { new: true, entry, ...queryResult };
   }
 
   // Attempt to find exact matches using identifiers
-  exactSearch(element: any) {
+  exactSearch(element: any): { matches: any[] } {
     const exactString = (this.exactKeys ?? [])
       .filter((ek) => element[ek])
       .map((ek) =>
         typeof ek === 'string'
           ? `=${element[ek]}`
-          : (element[ek].map((k: any) => `=${k}`).join(' | '))
+          : element[ek].map((k: any) => `=${k}`).join(' | ')
       )
       .join(` | `);
 
     return this.index.search(exactString);
   }
 
-  /*
-  exactSearch(element: any) {
-    let object : any = {};
-    if (element.sapid) object.sapid = element.sapid;
-    if (element.masterid) object.masterid = element.masterid;
-    const exactMatches = this.index.search(object);
-    if (exactMatches.length > 0)
-      log.info(`Found match from sapid/masterid: ${object}`);
-    // A hack to return exact matches only
-    return exactMatches.filter(({item}: {item: any}) => partial(item, object));
-  }
-  */
-
-  async setItem({item, pointer}: {item: any, pointer: string}) {
+  async setItem({ item, pointer }: { item: any, pointer: string }) {
     const id = pointer.replace(/^\//, '');
     if (id === 'expand-index') return;
 
@@ -293,7 +270,7 @@ export class Search<Element extends ElementBase> {
     this.setCollection(this.indexObject);
   }
 
-  async setItemExpand({item, pointer}: {item: any, pointer: string}) {
+  async setItemExpand({ item, pointer }: { item: any, pointer: string }) {
     const key = pointer.replace(/^\//, '');
     if (key === 'expand-index') return;
 
@@ -304,7 +281,7 @@ export class Search<Element extends ElementBase> {
     });
   }
 
-  async removeItemExpand({pointer}: {pointer: string}) {
+  async removeItemExpand({ pointer }: { pointer: string }) {
     const key = pointer.replace(/^\//, '');
     if (key === 'expand-index') return;
     await this.oada.delete({
@@ -312,7 +289,7 @@ export class Search<Element extends ElementBase> {
     });
   }
 
-  async removeItem({pointer}: {pointer: string}) {
+  async removeItem({ pointer }: { pointer: string }) {
     const id = pointer.replace(/^\//, '');
     if (id === 'expand-index') return;
     delete this.indexObject[id];
@@ -324,11 +301,7 @@ export class Search<Element extends ElementBase> {
    * from the received FL business
    * @param data expand index content
    */
-  async updateExpandIndex(
-    data: any,
-    key: string,
-    oada: OADAClient,
-  ) {
+  async updateExpandIndex(data: any, key: string, oada: OADAClient) {
     try {
       // Expand index
       await oada.put({
@@ -344,8 +317,54 @@ export class Search<Element extends ElementBase> {
     }
   } // UpdateExpandIndex
 
-  async #generate(job: { config: { element: Element } }): Promise<Element> {
+  async mergeElements(job: {
+    config: {
+      from: string;
+      to: string;
+    };
+  }): Promise<void> {
+    const { from, to } = job.config;
+    const { data: toElement } = (await this.oada.get({
+      path: `/${to}`,
+    })) as unknown as { data: Element };
+    const { data: fromElement } = (await this.oada.get({
+      path: `/${from}`,
+    })) as unknown as { data: Element };
+
+    // Combine the two elements generically; take the union of the content, but
+    // take the TO values over the FROM values; concat the externalIds
+    await this.oada.put({
+      path: `/${to}`,
+      data: {
+        ...fromElement,
+        ...toElement,
+        externalIds: Array.from(new Set(toElement.externalIds ?? [])).concat(
+          fromElement.externalIds ?? []
+        ),
+      },
+    });
+
+    // Delete the element to fail over any queries during the merge
+    await this.oada.delete({
+      path: `${this.path}/${from.replace(/^resources\//, '')}`,
+    });
+
+    // Provide an opportunity for some additional merge steps
+    if (this.merge) await this.merge(this.oada, job);
+  }
+
+  async generateElement(job: { config: { element: Element } }): Promise<Element> {
     let data = job?.config?.element;
+    // Each externalid may be in use by one trading partner
+    const externalIds = (data.externalIds ?? []).filter(
+      (xid) => this.index.search(`=${xid}`).length > 0
+    );
+
+    if (externalIds.length > 0)
+      throw new Error(
+        `External IDs supplied to merge operation are already in use by non-merging entities: ${externalIds}`
+      );
+
     try {
       const linkData = this.generate ? await this.generate(this.oada) : {};
       // Make the key equal to the resource id instead of tree POST
@@ -381,43 +400,13 @@ export class Search<Element extends ElementBase> {
       // FYI: data does not contain _id so it is safe to send to
       await this.updateExpandIndex(data, key, this.oada);
       log.info('Added item to the expand-index ', data.masterid);
-      //Optimistic add to collection so we don't wait for things
+      // Optimistic add to collection so we don't wait for things
       await this.setItem({ pointer: key, item: data });
       return data;
     } catch (error_: unknown) {
       log.error('Generate Errored:', error_);
       throw error_;
     }
-  }
-
-  async #merge(job: {
-    config: {
-      from: string;
-      to: string;
-      externalIds?: string | string[];
-    };
-  }): Promise<void> {
-    // Each externalid may be in use by one trading partner-- and it should be involved in the
-    // merge operation
-    const { externalIds } = job.config;
-    let xids = externalIds ? (Array.isArray(externalIds) ? externalIds : [externalIds]) : [];
-    xids = xids.filter((xid) => {
-      const matches = this.index.search(`=${xid}`);
-      return (
-        matches.length > 1 ||
-        (matches.length === 1 &&
-          ![job.config.to, job.config.from].includes(
-            matches[0].item.masterid
-          )
-        )
-      );
-    });
-
-    if (xids.length > 0)
-      throw new Error(
-        `External IDs supplied to merge opperation are already in use by non-merging entities: ${xids}`
-      );
-    await this.merge(this.oada, job);
   }
 }
 
@@ -426,9 +415,9 @@ export type EnsureResult = {
   matches?: any[];
   exact?: boolean;
   new?: boolean;
-}
+};
 
 export type QueryResult = {
   matches: any[];
   exact?: boolean;
-}
+};
