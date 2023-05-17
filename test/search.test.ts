@@ -347,7 +347,7 @@ test(`Ensure should create a new thing if multiple 'exact' matches come back`, a
   t.is(result.matches![1].item.sapid, externalIds);
 });
 
-test.only('Generate should throw if an input external id is already in use', async (t) => {
+test('Generate should throw if an input external id is already in use', async (t) => {
   const err = await t.throwsAsync(
     async () => await search.generateElement({
     config: {
@@ -369,25 +369,28 @@ test.only('Generate should throw if an input external id is already in use', asy
 });
 
 test('Merge should take two entries and make them one', async (t) => {
+  t.timeout(25_000);
+
+  search.indexObject = {};
+  search.setCollection(search.indexObject);
+  await search.generateElement({ config: { element: testObject['1'] } });
+  await search.generateElement({ config: { element: testObject['2'] } });
+  await setTimeout(2000);
+
   await search.mergeElements({
     config: {
-      to: 'resources/123456789',
-      from: 'resources/987654321',
+      to: search.index._docs[0].masterid,
+      from: search.index._docs[1].masterid,
     },
   });
 
   t.is(search.index._docs.length, 1);
-  t.is(search.index._docs[0].item.masterid, testObject['1'].masterid);
-  t.is(search.index._docs[0].item.name, testObject['1'].name);
-  t.is(search.index._docs[0].item.address, testObject['1'].address);
-  t.is(search.index._docs[0].item.city, testObject['1'].city);
-  t.is(search.index._docs[0].item.state, testObject['1'].state);
-  t.is(search.index._docs[0].item.phone, testObject['1'].phone);
-  t.truthy(
-    search.index._docs[0].item.externalIds.includes([
-      'sap:123456789',
-      'sap:987654321',
-    ])
-  );
-  t.assert(search.index._docs[0].item.extra);
+  t.is(search.index._docs[0].name, testObject['1'].name);
+  t.is(search.index._docs[0].address, testObject['1'].address);
+  t.is(search.index._docs[0].city, testObject['1'].city);
+  t.is(search.index._docs[0].state, testObject['1'].state);
+  t.is(search.index._docs[0].phone, testObject['1'].phone);
+  t.assert(search.index._docs[0].extra);
+  t.true(search.index._docs[0].externalIds.includes('sap:123456789'));
+  t.true(search.index._docs[0].externalIds.includes('sap:987654321'));
 });

@@ -185,7 +185,7 @@ export class Search<Element extends ElementBase> {
       config.get('timeouts.query'),
       this.mergeElements.bind(this) as unknown as WorkerFunction
     );
-    log.info(`Started ${this.name}-query listener.`);
+    log.info(`Started ${this.name}-merge listener.`);
   }
 
   setCollection(data: Record<string, Element>) {
@@ -345,10 +345,14 @@ export class Search<Element extends ElementBase> {
     });
 
     // Delete the element to fail over any queries during the merge
+    const fromKey = from.replace(/^resources/, '');
     await this.oada.delete({
-      path: `${this.path}/${from.replace(/^resources\//, '')}`,
+      path: `${this.path}${fromKey}`,
     });
 
+    //Optimistic removal
+    await this.removeItemExpand({ pointer: fromKey });
+    await this.removeItem({ pointer: fromKey });
     // Provide an opportunity for some additional merge steps
     if (this.merge) await this.merge(this.oada, job);
   }
@@ -362,7 +366,7 @@ export class Search<Element extends ElementBase> {
 
     if (externalIds.length > 0)
       throw new Error(
-        `External IDs supplied to merge operation are already in use by non-merging entities: ${externalIds}`
+        `The supplied External IDs are already in use: ${externalIds}`
       );
 
     try {
