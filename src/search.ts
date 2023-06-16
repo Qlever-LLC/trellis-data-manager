@@ -20,7 +20,7 @@ import type { OADAClient } from '@oada/client';
 import type { Tree } from '@oada/types/oada/tree/v1.js';
 import { ChangeType } from '@oada/list-lib';
 import Fuse from 'fuse.js';
-import { AssumeState, ListWatch } from '@oada/list-lib';
+import { ListWatch } from '@oada/list-lib';
 import type { Service, WorkerFunction } from '@oada/jobs';
 import config from './config.js';
 //@ts-ignore
@@ -28,7 +28,7 @@ import { partial } from 'match-json';
 import { JsonPointer } from 'json-ptr';
 
 const log = {
-  info: debug('ts-data-manager-Search:info'),
+  info: debug('trellis-data-manager-Search:info'),
   warn: debug('trellis-data-manager-Search:warn'),
   error: debug('trellis-data-manager-Search:error'),
 };
@@ -113,6 +113,11 @@ export class Search<Element extends ElementBase> {
     };
     this.index = new Fuse([], options);
     this.indexObject = {};
+    const { _type } = new JsonPointer(this.path).get(this.tree) as {
+      _type: string;
+    };
+    const expandPtr = new JsonPointer(this.expandIndexPath);
+    expandPtr.set(this.tree, { _type });
   }
 
   async init() {
@@ -122,20 +127,28 @@ export class Search<Element extends ElementBase> {
       tree: this.tree,
     });
 
-    await this.oada.ensure({
-      path: this.expandIndexPath,
-      data: {},
-      tree: this.tree,
-    });
+    // Wipe out, then recreate the expand-index to ensure it
+    // is aligned with the trading-partner list
+    try {
+      await this.oada.delete({
+        path: this.expandIndexPath,
+      });
+
+      await this.oada.ensure({
+        path: this.expandIndexPath,
+        data: {},
+        tree: this.tree,
+      });
+    } catch(err) {
+      console.log(err);
+    }
 
     this.#watch = new ListWatch({
       path: this.path,
       name: this.name,
       conn: this.oada,
-      resume: true,
+      resume: false,
       tree: this.tree,
-      itemsPath: `$.*`,
-      onNewList: AssumeState.Handled,
     });
 
     // Handle Adds
@@ -186,6 +199,13 @@ export class Search<Element extends ElementBase> {
       this.mergeElements.bind(this) as unknown as WorkerFunction
     );
     log.info(`Started ${this.name}-merge listener.`);
+    this.service.on(
+      `${this.name}-update`,
+      config.get('timeouts.query'),
+      this.update.bind(this) as unknown as WorkerFunction
+    );
+    log.info(`Started ${this.name}-query listener.`);
+
   }
 
   setCollection(data: Record<string, Element>) {
@@ -197,7 +217,7 @@ export class Search<Element extends ElementBase> {
   }
 
   query(job: { config: { element: Element } }): QueryResult {
-    const element = Object.fromEntries(
+    let element = Object.fromEntries(
       // Remove non-searchable keys
       Object.entries(job?.config?.element || {}).filter(
         ([k, _]) =>
@@ -210,13 +230,13 @@ export class Search<Element extends ElementBase> {
     // First find exact matches using primary keys
     const exactMatches = this.exactSearch(element);
 
-    if (exactMatches.matches.length > 0)
-      return { exact: true, ...exactMatches };
-
-    const searchResult = this.index.search(element);
+    if (exactMatches.length > 0) return { exact: true, matches: exactMatches };
+    element = Object.fromEntries(
+      Object.entries(element || {}).filter(([_, v]) => !Array.isArray(v))
+    );
 
     // TODO: Create permutations of element keys, search them, and compile results...
-    return searchResult;
+    return { matches: this.index.search(element) };
   }
 
   async ensure(job: { config: { element: Element } }): Promise<EnsureResult> {
@@ -248,11 +268,11 @@ export class Search<Element extends ElementBase> {
   }
 
   // Attempt to find exact matches using identifiers
-  exactSearch(element: any): { matches: any[] } {
+  exactSearch(element: any): any[] {
     const exactString = (this.exactKeys ?? [])
       .filter((ek) => element[ek])
       .map((ek) =>
-        typeof ek === 'string'
+        typeof element[ek] === 'string'
           ? `=${element[ek]}`
           : element[ek].map((k: any) => `=${k}`).join(' | ')
       )
@@ -272,13 +292,22 @@ export class Search<Element extends ElementBase> {
 
   async setItemExpand({ item, pointer }: { item: any, pointer: string }) {
     const key = pointer.replace(/^\//, '');
-    if (key === 'expand-index') return;
+    if (key === 'expand-index' || key.startsWith('_')) return;
 
     item = await item;
-    await this.oada.put({
+
+    item = Object.fromEntries(
+      Object.entries(item).filter(([k, _]) => !k.startsWith('_'))
+    );
+    try {
+    await this.oada.ensure({
       path: `${this.expandIndexPath}/${key}`,
       data: item,
     });
+    console.log('done', key)
+  } catch(err) {
+    console.log(err);
+  }
   }
 
   async removeItemExpand({ pointer }: { pointer: string }) {
@@ -350,11 +379,43 @@ export class Search<Element extends ElementBase> {
       path: `${this.path}${fromKey}`,
     });
 
-    //Optimistic removal
+    // Optimistic removal
     await this.removeItemExpand({ pointer: fromKey });
     await this.removeItem({ pointer: fromKey });
     // Provide an opportunity for some additional merge steps
     if (this.merge) await this.merge(this.oada, job);
+  }
+
+  async update(job: {
+    config: {
+      element: Element;
+    };
+  }): Promise<void> {
+    const { element } = job.config;
+    if (!element.masterid)
+      throw new Error(`masterid required for update operation.`);
+    const queryResult = this.query(job);
+    if (element.externalIds) {
+      element.externalIds = Array.from(
+        new Set([
+          ...(element.externalIds ?? []),
+          ...queryResult.matches[0].item.externalIds,
+        ])
+      );
+    }
+
+    await this.oada.put({
+      path: `/${element.masterid}`,
+      data: element,
+    });
+    // Optimistic add to collection so we don't wait for things
+    const { data } = await this.oada.get({
+      path: `/${element.masterid}`,
+    });
+    await this.setItem({
+      pointer: element.masterid.replace(/^resources\//, ''),
+      item: data,
+    });
   }
 
   async generateElement(job: { config: { element: Element } }): Promise<Element> {

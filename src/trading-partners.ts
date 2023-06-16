@@ -39,7 +39,6 @@ export const trellisTPTemplate = {
   address: '',
   city: '',
   state: '',
-  type: 'CUSTOMER',
   coi_emails: '',
   fsqa_emails: '',
   email: '',
@@ -116,29 +115,39 @@ export async function generateTP(oada: OADAClient) {
   };
 }
 
+// The tree PUTs here need to be revised. perhaps, just hack the tree...
 async function mergeDocumentTree(oada: OADAClient, from: string, to: string) {
   const fromPath = `/${from}/bookmarks/trellisfw/documents`;
   const toPath = `/${to}/bookmarks/trellisfw/documents`;
 
-  const { data: documentTypes } = await oada.get({ path: `/${fromPath}` });
-  const documentTypeKeys = Object.keys(documentTypes ?? {}).filter(
-    (k) => !k.startsWith('_')
-  );
+  let documentTypeKeys: string[] = [];
+  try {
+    const { data: documentTypes } = await oada.get({ path: `${fromPath}` });
+    documentTypeKeys = Object.keys(documentTypes ?? {}).filter(
+      (k) => !k.startsWith('_')
+    );
+  } catch (error: any) {
+    if (error.status !== 404) throw error;
+  }
 
   for await (const type of documentTypeKeys) {
-    const { data: documentType } = await oada.get({
-      path: `/${fromPath}/${type}`,
-    });
-    const documents = Object.fromEntries(
-      Object.entries(documentType ?? {}).filter(
-        ([key, _]) => !key.startsWith('_')
-      )
-    );
-    await oada.put({
-      path: `${toPath}/${type}`,
-      tree,
-      data: documents,
-    });
+    try {
+      const { data: documentType } = await oada.get({
+        path: `${fromPath}/${type}`,
+      });
+      const documents = Object.fromEntries(
+        Object.entries(documentType ?? {}).filter(
+          ([key, _]) => !key.startsWith('_')
+        )
+      );
+      await oada.put({
+        path: `${toPath}/${type}`,
+        tree,
+        data: documents,
+      });
+    } catch (error_: any) {
+      if (error_.status !== 404) throw error_;
+    }
   }
 }
 

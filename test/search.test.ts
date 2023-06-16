@@ -32,6 +32,7 @@ testTree.bookmarks!.test =
   _.cloneDeep(testTree.bookmarks!.trellisfw!['trading-partners']) ?? {};
 
 let conn: OADAClient;
+let svc: Service;
 
 type TestElement = {
   id?: string;
@@ -50,7 +51,7 @@ let search: Search<TestElement>;
 
 const testObject = {
   '1': {
-    id: '1',
+    id: '1abc',
     name: 'John Doe',
     phone: '1234567890',
     email: 'john.doe@example.com',
@@ -59,10 +60,10 @@ const testObject = {
     state: 'USA',
     externalIds: ['sap:123456789'],
     masterid: 'resources/123456789',
-    key: '1',
+    key: '1abc',
   },
   '2': {
-    id: '2',
+    id: '2abc',
     name: 'Jane Smith',
     phone: '0987654321',
     email: 'jane.smith@example.com',
@@ -71,25 +72,18 @@ const testObject = {
     state: 'USA',
     externalIds: ['sap:987654321'],
     masterid: 'resources/987654321',
-    key: '2',
+    key: '2abc',
     extra: true,
   },
 };
 
-test.after('Clean up the service', async () => {
-  await conn.delete({
-    path: `/bookmarks/test`,
-  });
-});
-
-test.beforeEach('Start up the service', async () => {
+test.before('Start up the service', async () => {
   conn = await connect({ token, domain });
-
   await conn.delete({
     path: `/bookmarks/test`,
   });
 
-  const svc = new Service({
+  svc = new Service({
     name: 'test-service',
     oada: conn,
   });
@@ -101,10 +95,28 @@ test.beforeEach('Start up the service', async () => {
     path: '/bookmarks/test',
     service: svc,
     tree: testTree,
+    searchKeys: [
+      {
+        name: 'name',
+        weight: 2,
+      },
+      'phone',
+      'email',
+      'address',
+      'city',
+      'state',
+    ],
   });
-
   await search.init();
+});
 
+test.after('Clean up the service', async () => {
+  await conn.delete({
+    path: `/bookmarks/test`,
+  });
+});
+
+test.beforeEach('Start up the service', () => {
   search.indexObject = _.cloneDeep(testObject);
   search.setCollection(search.indexObject);
 });
@@ -393,4 +405,73 @@ test('Merge should take two entries and make them one', async (t) => {
   t.assert(search.index._docs[0].extra);
   t.true(search.index._docs[0].externalIds.includes('sap:123456789'));
   t.true(search.index._docs[0].externalIds.includes('sap:987654321'));
+});
+
+test('Update should take additional data and add it to the element', async (t) => {
+  t.timeout(25_000);
+
+  search.indexObject = {};
+  search.setCollection(search.indexObject);
+  await search.generateElement({ config: { element: testObject['1'] } });
+  await search.update({
+    config: {
+      element: {
+        masterid: search.index._docs[0].masterid,
+        externalIds: ['test:777777'],
+      },
+    },
+  });
+
+  t.assert(search.index._docs[0]);
+  t.true(search.index._docs[0].externalIds.includes('test:777777'));
+  t.true(
+    search.index._docs[0].externalIds.includes(testObject['1'].externalIds[0])
+  );
+});
+
+test('Update should error if masterid is missing', async (t) => {
+  t.timeout(25_000);
+
+  search.indexObject = {};
+  search.setCollection(search.indexObject);
+  await search.generateElement({ config: { element: testObject['1'] } });
+  const err = await t.throwsAsync(
+    async () =>
+    await search.update({
+      config: {
+        element: {
+          externalIds: ['test:777777'],
+        },
+      },
+    })
+  );
+
+  t.is(err?.message, 'masterid required for update operation.');
+});
+
+test.only('The expand-index should get reset based on the items in the main search path', async (t) => {
+
+  await conn.put({
+    path: `${search.path}/${testObject['1'].id}`,
+    data: testObject['1'],
+    tree: testTree,
+  });
+  await conn.put({
+    path: `${search.path}/${testObject['2'].id}`,
+    data: testObject['2'],
+    tree: testTree,
+  });
+
+  await setTimeout(7_000);
+  // Re-init the search to update the expand-index
+  await search.init();
+
+  await setTimeout(7_000);
+
+  const { data: results } = (await conn.get({
+    path: `${search.expandIndexPath}`,
+  })) as { data: Record<string, TestElement> };
+
+  t.assert(results[testObject['1'].id]);
+  t.assert(results[testObject['2'].id]);
 });

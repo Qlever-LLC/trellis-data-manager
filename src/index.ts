@@ -19,7 +19,7 @@
 import '@oada/pino-debug';
 
 // Import this first to setup the environment
-import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
+//import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
 import config from './config.js';
 import { connect } from '@oada/client';
 import debug from 'debug';
@@ -31,6 +31,7 @@ import { Search } from './search.js';
 import { Service } from '@oada/jobs';
 import type TradingPartner from '@oada/types/trellis/trading-partners/trading-partner.js';
 import { tree } from './tree.masterData.js';
+import _ from 'lodash';
 const log = {
   error: debug('tdm:error'),
   info: debug('tdm:info'),
@@ -38,9 +39,12 @@ const log = {
 };
 
 const { token, domain } = config.get('oada');
-const { name: SERVICE_NAME } = config.get('service');
-const tradingPartner = `/bookmarks/trellisfw/trading-partners`;
+const { name } = config.get('service');
+const SERVICE_NAME = `test-${name}`;
+//const tradingPartner = `/bookmarks/trellisfw/trading-partners`;
+const tradingPartner = `/bookmarks/test/trading-partners`;
 let oada: OADAClient;
+tree.bookmarks!.test = _.cloneDeep(tree.bookmarks!.trellisfw) ?? {};
 
 /**
  * Start-up for a given user (token)
@@ -60,15 +64,13 @@ export async function run() {
 
   // Catch errors
   try {
-    // Start the jobs watching service
-    await svc.start();
     // Set the job type handlers
     const m = new Search<TradingPartner>({
       oada: conn,
       path: tradingPartner,
       name: 'trading-partners',
       service: svc,
-      assert: assertTP,
+      //assert: assertTP,
       generate: generateTP,
       merge: mergeTPs,
       tree,
@@ -86,6 +88,8 @@ export async function run() {
       ],
     });
     await m.init();
+    // Start the jobs watching service
+    await svc.start();
   } catch (cError: unknown) {
     log.error(cError);
     // eslint-disable-next-line no-process-exit, unicorn/no-process-exit

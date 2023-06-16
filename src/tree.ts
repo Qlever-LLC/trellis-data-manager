@@ -46,7 +46,7 @@ export const tree: Record<string, any> = {
             _rev: 0,
           },
         },
-      }
+      },
     },
     services: {
       _type: 'application/vnd.oada.services.1+json',

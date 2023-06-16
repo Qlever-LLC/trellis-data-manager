@@ -114,5 +114,9 @@
   "packageManager": "yarn@3.5.0",
   "volta": {
     "node": "16.19.0"
+  },
+  "resolutions": {
+    "@oada/client": "portal:/home/sanoel/client",
+    "@oada/list-lib": "portal:/home/sanoel/list-lib"
   }
 }
