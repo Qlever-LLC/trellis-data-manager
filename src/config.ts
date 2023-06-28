@@ -23,6 +23,12 @@ import { duration } from 'convict-format-with-moment';
 convict.addFormat(duration);
 
 const config = convict({
+  production: {
+    doc: 'Whether to run with production naming/oada paths or else testing prefixes',
+    default: false,
+    env: 'PRODUCTION',
+    arg: 'production',
+  },
   service: {
     path: {
       doc: 'Base path for the service',
@@ -77,8 +83,8 @@ const config = convict({
       default: 'god-proxy',
       env: 'TOKEN',
       arg: 'token',
-    }
-  }
+    },
+  },
 });
 
 config.validate({ allowed: 'warn' });

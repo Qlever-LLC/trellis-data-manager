@@ -39,10 +39,13 @@ const log = {
 };
 
 const { token, domain } = config.get('oada');
-const { name } = config.get('service');
-const SERVICE_NAME = `test-${name}`;
-//const tradingPartner = `/bookmarks/trellisfw/trading-partners`;
-const tradingPartner = `/bookmarks/test/trading-partners`;
+const NAME = config.get('service.name');
+const PRODUCTION = config.get('production');
+const SERVICE_NAME = `${PRODUCTION ? 'test-' : ''}${NAME}`;
+
+const path = PRODUCTION
+  ? `/bookmarks/trellisfw/trading-partners`
+  : `/bookmarks/test/trading-partners`;
 let oada: OADAClient;
 tree.bookmarks!.test = _.cloneDeep(tree.bookmarks!.trellisfw) ?? {};
 
@@ -67,7 +70,7 @@ export async function run() {
     // Set the job type handlers
     const m = new Search<TradingPartner>({
       oada: conn,
-      path: tradingPartner,
+      path,
       name: 'trading-partners',
       service: svc,
       //assert: assertTP,
