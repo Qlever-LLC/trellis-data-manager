@@ -225,7 +225,7 @@ export class Search<Element extends ElementBase> {
       )
     );
     if (!element || element === undefined || Object.keys(element).length === 0)
-      throw new Error('Invalid input search element at job.config.element');
+      throw new Error('Query Error: Invalid input search element at job.config.element');
 
     // First find exact matches using primary keys
     const exactMatches = this.exactSearch(element);
@@ -253,7 +253,11 @@ export class Search<Element extends ElementBase> {
         }
 
         if (queryResult.matches.length > 1) {
-          log.warn(`Multiple exact matches were found. Creating a new entry.`);
+          log.warn(`Multiple exact matches were found. Returning matches.`);
+          return {
+            ...queryResult,
+            new: false,
+          };
         }
       }
     } else {
@@ -300,14 +304,13 @@ export class Search<Element extends ElementBase> {
       Object.entries(item).filter(([k, _]) => !k.startsWith('_'))
     );
     try {
-    await this.oada.ensure({
-      path: `${this.expandIndexPath}/${key}`,
-      data: item,
-    });
-    console.log('done', key)
-  } catch(err) {
-    console.log(err);
-  }
+      await this.oada.ensure({
+        path: `${this.expandIndexPath}/${key}`,
+        data: item,
+      });
+    } catch(err) {
+      console.log(err);
+    }
   }
 
   async removeItemExpand({ pointer }: { pointer: string }) {
@@ -390,16 +393,27 @@ export class Search<Element extends ElementBase> {
     config: {
       element: Element;
     };
-  }): Promise<void> {
+  }): Promise<Element> {
     const { element } = job.config;
     if (!element.masterid)
       throw new Error(`masterid required for update operation.`);
-    const queryResult = this.query(job);
-    if (element.externalIds) {
+    const queryResult = this.index.search(`=${element.masterid}`);
+    if (!queryResult) throw new Error(`Entry with masterid not found`);
+    // Validate that new externalIds are not in use.
+    if (element.externalIds && element.externalIds.length > 0) {
+      const invalidXids = (element.externalIds ?? []).filter((xid) =>
+        !queryResult[0].item.externalIds.includes(xid)
+      ).filter((xid) => this.index.search(`=${xid}`).length > 0);
+      // Don't throw, just remove the invalid ones and report out the results
+      if (invalidXids.length > 0)
+        log.warn(
+          `The supplied External IDs are already in use: ${invalidXids.join(', ')}`
+        );
+
       element.externalIds = Array.from(
         new Set([
-          ...(element.externalIds ?? []),
-          ...queryResult.matches[0].item.externalIds,
+          ...(queryResult[0].item.externalIds ?? []),
+          ...element.externalIds.filter(xid => !invalidXids.includes(xid))
         ])
       );
     }
@@ -416,6 +430,7 @@ export class Search<Element extends ElementBase> {
       pointer: element.masterid.replace(/^resources\//, ''),
       item: data,
     });
+    return data as unknown as Element;
   }
 
   async generateElement(job: { config: { element: Element } }): Promise<Element> {

@@ -236,40 +236,41 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oada/client@portal:/home/sanoel/client::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A.":
-  version: 0.0.0-use.local
-  resolution: "@oada/client@portal:/home/sanoel/client::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A."
+"@oada/client@npm:^4.5.0, @oada/client@npm:^4.5.3":
+  version: 4.5.3
+  resolution: "@oada/client@npm:4.5.3"
   dependencies:
     "@oada/jobs": ^4.2.5
-    "@oada/types": ^3.5.2
+    "@oada/types": ^3.4.6
     abort-controller: ^3.0.0
     buffer: ^6.0.3
-    bufferutil: ^4.0.7
-    cross-fetch: ^3.1.6
+    bufferutil: ^4.0.6
+    cross-fetch: ^3.1.5
     debug: ^4.3.4
-    deep-clone: ^4.0.0
+    deep-clone: ^3.0.3
     encoding: ^0.1.13
     event-iterator: ^2.0.0
-    eventemitter3: ^5.0.1
+    eventemitter3: ^4.0.7
     fetch-h2: ^3.0.2
-    file-type: ^18.5.0
+    file-type: ^18.0.0
     isomorphic-timers-promises: ^1.0.1
     isomorphic-ws: ^5.0.0
     json-ptr: ^3.1.1
     jsonpath-plus: ^7.2.0
     media-type: ^0.3.1
     object-assign-deep: ^0.4.0
-    p-queue: ^7.3.4
+    p-queue: ^7.3.0
     reconnecting-websocket: ^4.4.0
     resolve-alpn: ^1.2.1
     serialize-error: ^11.0.0
-    supports-color: ^9.3.1
-    tslib: ^2.5.3
-    utf-8-validate: ^6.0.3
-    ws: ^8.13.0
+    supports-color: ^9.2.3
+    tslib: ^2.5.0
+    utf-8-validate: ^5.0.9
+    ws: ^8.9.0
     xksuid: ^0.0.3
+  checksum: bca3f80652f0ba14b3369dc14caf41a95064dd6831a23c0a0833eadfe42cead92e264c18725742f01156b9c90b5f8cd86cf34b524d8d866ee60d8ddc88df6f16
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "@oada/jobs@npm:^4.2.5":
   version: 4.2.5
@@ -336,9 +337,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oada/list-lib@portal:/home/sanoel/list-lib::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A.":
-  version: 0.0.0-use.local
-  resolution: "@oada/list-lib@portal:/home/sanoel/list-lib::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A."
+"@oada/list-lib@npm:^4.2.6":
+  version: 4.2.6
+  resolution: "@oada/list-lib@npm:4.2.6"
   dependencies:
     "@oada/types": ^3.3.0
     abort-controller: ^3.0.0
@@ -351,8 +352,9 @@ __metadata:
     tslib: ^2.4.1
   peerDependencies:
     "@oada/client": ^4.3.2
+  checksum: 083e8cfc820192bbd18c83748b362fbdf8e73899d9a8e19ec9dc490219323a6645c265da63a280dc49137637ed5f891951e0aa8aa19ec6f52a4dcc0558888068
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "@oada/oadaify@npm:^2.1.0":
   version: 2.1.0
@@ -420,25 +422,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oada/types@npm:^3.5.2":
-  version: 3.5.2
-  resolution: "@oada/types@npm:3.5.2"
-  dependencies:
-    ajv: 8.12.0
-    ajv-formats: ^2.1.1
-    ajv-formats-draft2019: ^1.6.1
-    tslib: ^2.5.0
-  checksum: 1d238bc9d284a37b49b56af6306c046503b9e86bcec3deeeb9c802d305219aa8946dd37768c911f92e363fe8c3be14c657f7a3895dcb8c677c57aff55a095990
-  languageName: node
-  linkType: hard
-
 "@qlever-llc/trellis-data-manager@workspace:.":
   version: 0.0.0-use.local
   resolution: "@qlever-llc/trellis-data-manager@workspace:."
   dependencies:
     "@ava/typescript": ^3.0.1
     "@elastic/elasticsearch": ^8.6.0
-    "@oada/client": ^4.5.2
+    "@oada/client": ^4.5.3
     "@oada/jobs": ^4.2.5
     "@oada/lib-config": ^3.5.1
     "@oada/lib-prom": ^3.5.1
@@ -1427,7 +1417,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bufferutil@npm:^4.0.7":
+"bufferutil@npm:^4.0.6":
   version: 4.0.7
   resolution: "bufferutil@npm:4.0.7"
   dependencies:
@@ -1996,7 +1986,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cross-fetch@npm:^3.1.6":
+"cross-fetch@npm:^3.1.5":
   version: 3.1.6
   resolution: "cross-fetch@npm:3.1.6"
   dependencies:
@@ -2085,10 +2075,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deep-clone@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "deep-clone@npm:4.0.0"
-  checksum: 1068fe32728dcd438e3f8b5d93868d6cea593f35feb3c4c4a23f9270b12ec6789f58d8df7c3b35adef08d50502e9f1fa3c89c9d775b24d4c15b63c8fb93fb62d
+"deep-clone@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "deep-clone@npm:3.0.3"
+  checksum: 186e73b2115a6a219465b61a7a31794370330d7b74ae3960bf89660c55087997fef956d4720295c8bda677caa1c85fda352296683370e14b614c3688233dbdda
   languageName: node
   linkType: hard
 
@@ -3022,13 +3012,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eventemitter3@npm:^5.0.1":
-  version: 5.0.1
-  resolution: "eventemitter3@npm:5.0.1"
-  checksum: 543d6c858ab699303c3c32e0f0f47fc64d360bf73c3daf0ac0b5079710e340d6fe9f15487f94e66c629f5f82cd1a8678d692f3dbb6f6fcd1190e1b97fcad36f8
-  languageName: node
-  linkType: hard
-
 "events@npm:^3.3.0":
   version: 3.3.0
   resolution: "events@npm:3.3.0"
@@ -3172,7 +3155,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"file-type@npm:^18.5.0":
+"file-type@npm:^18.0.0":
   version: 18.5.0
   resolution: "file-type@npm:18.5.0"
   dependencies:
@@ -5246,7 +5229,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"p-queue@npm:^7.3.4":
+"p-queue@npm:^7.3.0":
   version: 7.3.4
   resolution: "p-queue@npm:7.3.4"
   dependencies:
@@ -6444,7 +6427,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"supports-color@npm:^9.3.1":
+"supports-color@npm:^9.2.3":
   version: 9.3.1
   resolution: "supports-color@npm:9.3.1"
   checksum: 00c4d1082a7ba0ee21cba1d4e4a466642635412e40476777b530aa5110d035e99a420cd048e1fb6811f2254c0946095fbb87a1eccf1af1d1ca45ab0a4535db93
@@ -6629,13 +6612,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.5.3":
-  version: 2.5.3
-  resolution: "tslib@npm:2.5.3"
-  checksum: 88902b309afaf83259131c1e13da1dceb0ad1682a213143a1346a649143924d78cf3760c448b84d796938fd76127183894f8d85cbb3bf9c4fddbfcc140c0003c
-  languageName: node
-  linkType: hard
-
 "tsutils@npm:^3.21.0":
   version: 3.21.0
   resolution: "tsutils@npm:3.21.0"
@@ -6805,13 +6781,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"utf-8-validate@npm:^6.0.3":
-  version: 6.0.3
-  resolution: "utf-8-validate@npm:6.0.3"
+"utf-8-validate@npm:^5.0.9":
+  version: 5.0.10
+  resolution: "utf-8-validate@npm:5.0.10"
   dependencies:
     node-gyp: latest
     node-gyp-build: ^4.3.0
-  checksum: 5e21383c81ff7469c1912119ca69d07202d944c73ddd8a54b84dddcc546b939054e5101c78c294e494d206fe93bd43428adc635a0660816b3ec9c8ec89286ac4
+  checksum: 5579350a023c66a2326752b6c8804cc7b39dcd251bb088241da38db994b8d78352e388dcc24ad398ab98385ba3c5ffcadb6b5b14b2637e43f767869055e46ba6
   languageName: node
   linkType: hard
 
@@ -6977,7 +6953,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.13.0":
+"ws@npm:^8.9.0":
   version: 8.13.0
   resolution: "ws@npm:8.13.0"
   peerDependencies:
