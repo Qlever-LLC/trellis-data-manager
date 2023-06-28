@@ -41,7 +41,7 @@ const log = {
 const { token, domain } = config.get('oada');
 const NAME = config.get('service.name');
 const PRODUCTION = config.get('production');
-const SERVICE_NAME = `${PRODUCTION ? 'test-' : ''}${NAME}`;
+const SERVICE_NAME = `${PRODUCTION ? '' : 'test-'}${NAME}`;
 
 const path = PRODUCTION
   ? `/bookmarks/trellisfw/trading-partners`

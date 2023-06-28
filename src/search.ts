@@ -23,7 +23,6 @@ import Fuse from 'fuse.js';
 import { ListWatch } from '@oada/list-lib';
 import type { Service, WorkerFunction } from '@oada/jobs';
 import config from './config.js';
-//@ts-ignore
 import { partial } from 'match-json';
 import { JsonPointer } from 'json-ptr';
 
