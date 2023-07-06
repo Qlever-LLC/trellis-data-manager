@@ -99,7 +99,7 @@ export async function run() {
     process.exit(1);
   }
 
-  log.info('Started trellis-data-manager');
+  log.info('trellis-data-manager startup complete. It is now running...');
 }
 
 if (esMain(import.meta)) {

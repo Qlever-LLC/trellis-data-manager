@@ -15,16 +15,15 @@
  * limitations under the License.
  */
 
-import debug from 'debug';
-import type { OADAClient } from '@oada/client';
-import type { Tree } from '@oada/types/oada/tree/v1.js';
+import type { Service, WorkerFunction } from '@oada/jobs';
 import { ChangeType } from '@oada/list-lib';
 import Fuse from 'fuse.js';
-import { ListWatch } from '@oada/list-lib';
-import type { Service, WorkerFunction } from '@oada/jobs';
 import config from './config.js';
-import { partial } from 'match-json';
+import debug from 'debug';
 import { JsonPointer } from 'json-ptr';
+import { ListWatch } from '@oada/list-lib';
+import type { OADAClient } from '@oada/client';
+import type { Tree } from '@oada/types/oada/tree/v1.js';
 
 const log = {
   info: debug('trellis-data-manager-Search:info'),
