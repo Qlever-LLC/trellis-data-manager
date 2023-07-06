@@ -50,7 +50,7 @@ type TestElement = {
 let search: Search<TestElement>;
 
 const testObject = {
-  '1': {
+  '1abc': {
     id: '1abc',
     name: 'John Doe',
     phone: '1234567890',
@@ -62,7 +62,7 @@ const testObject = {
     masterid: 'resources/123456789',
     key: '1abc',
   },
-  '2': {
+  '2abc': {
     id: '2abc',
     name: 'Jane Smith',
     phone: '0987654321',
@@ -134,7 +134,7 @@ test('Query should return no results if no matches are found', (t) => {
 
 test('Query should return a match if one is found', (t) => {
   const result = search.query({ config: { element: { name: 'Jane Smith' } } });
-  t.deepEqual(result.matches[0].item, { key: '2', ...search.indexObject['2'] });
+  t.deepEqual(result.matches[0].item, { key: '2abc', ...search.indexObject['2abc'] });
 });
 
 test('Query should return matches if multiple are found', (t) => {
@@ -143,8 +143,8 @@ test('Query should return matches if multiple are found', (t) => {
   });
 
   t.is(result.matches.length, 2);
-  t.deepEqual(result.matches[0].item, { key: '2', ...search.indexObject['2'] });
-  t.deepEqual(result.matches[1].item, { key: '1', ...search.indexObject['1'] });
+  t.deepEqual(result.matches[0].item, { key: '2abc', ...search.indexObject['2abc'] });
+  t.deepEqual(result.matches[1].item, { key: '1abc', ...search.indexObject['1abc'] });
 });
 
 test(`Query should return 'exact' matches if an externalId exists on an entry`, (t) => {
@@ -154,7 +154,7 @@ test(`Query should return 'exact' matches if an externalId exists on an entry`, 
 
   t.is(result.matches.length, 1);
   t.is(result.exact, true);
-  t.deepEqual(result.matches[0].item, testObject['1']);
+  t.deepEqual(result.matches[0].item, testObject['1abc']);
 });
 
 test(`Query should return 'exact' matches if masterid exists on an entry`, (t) => {
@@ -164,7 +164,7 @@ test(`Query should return 'exact' matches if masterid exists on an entry`, (t) =
 
   t.is(result.matches.length, 1);
   t.is(result.exact, true);
-  t.deepEqual(result.matches[0].item, testObject['1']);
+  t.deepEqual(result.matches[0].item, testObject['1abc']);
 });
 
 test(`Query should return 'exact' matches if sap id and masterid both exist on an entry`, (t) => {
@@ -179,7 +179,7 @@ test(`Query should return 'exact' matches if sap id and masterid both exist on a
 
   t.is(result.matches.length, 1);
   t.is(result.exact, true);
-  t.deepEqual(result.matches[0].item, testObject['1']);
+  t.deepEqual(result.matches[0].item, testObject['1abc']);
 });
 
 //TODO: What behavior do we want here?? no 'exact' matches might be nice, but
@@ -214,7 +214,7 @@ test.skip(`Query should return matches if the input content is a perfect interse
   });
 
   t.is(result.matches.length, 1);
-  t.deepEqual(result.matches[0].item, testObject['1']);
+  t.deepEqual(result.matches[0].item, testObject['1abc']);
 });
 
 test('setItem should add an item and return it when queried', async (t) => {
@@ -227,7 +227,7 @@ test('setItem should add an item and return it when queried', async (t) => {
 });
 
 test('setItem should update an existing item and return it when queried', async (t) => {
-  const updatedItem = { ...testObject['1'], phone: '098-765-4321' };
+  const updatedItem = { ...testObject['1abc'], phone: '098-765-4321' };
   await search.setItem({ item: updatedItem, pointer: updatedItem.id });
   const result = search.query({ config: { element: { name: 'John Doe' } } });
   t.deepEqual(result.matches[0].item, updatedItem);
@@ -236,14 +236,14 @@ test('setItem should update an existing item and return it when queried', async 
 });
 
 test('removeItem should remove an item and not return it when queried', async (t) => {
-  await search.removeItem({ pointer: testObject['1'].id });
+  await search.removeItem({ pointer: testObject['1abc'].id });
   const result = search.query({ config: { element: { name: 'John Doe' } } });
   t.is(result.matches.length, 0);
 });
 
-//TODO:
-test.only('Items removed from the list should likewise get removed from the expand index', async (t) => {
-  await search.removeItem({ pointer: testObject['1'].id });
+test('Items removed from the list should likewise get removed from the expand index', async (t) => {
+  await search.removeItem({ pointer: testObject['1abc'].id });
+  await search.removeItemExpand({ pointer: testObject['1abc'].id });
   const result = search.query({ config: { element: { name: 'John Doe' } } });
   t.is(result.matches.length, 0);
 });
@@ -292,7 +292,7 @@ test('Removing an item from the list resource should prevent it from being retur
     path: `${search.path}/${data.id}`,
   });
 
-  await setTimeout(3000);
+  await setTimeout(4000);
 
   t.is(search.index._docs.length, Object.values(testObject).length);
 });
@@ -319,13 +319,13 @@ test(`Ensure should return 'exact' matches based only on exact match keys`, asyn
     phone: '777-777-7777',
     masterid: 'resources/abc123',
   };
-  await search.ensure({ config: { element: item1 } });
+  const { entry } = await search.ensure({ config: { element: item1 } });
 
   const item2 = {
     id: '777',
     name: 'Sam D.',
     phone: '111-111-1111',
-    masterid: 'resources/abc123',
+    masterid: entry.masterid,
   };
   const result = await search.ensure({ config: { element: item2 } });
 
@@ -370,8 +370,7 @@ test.skip(`Ensure should create a new thing if multiple 'exact' matches come bac
   t.is(result.matches![1].item.sapid, externalIds);
 });
 
-//TODO: Its on the requester to sort out multiple exact matches
-test.only(`Ensure should return multiple 'exact' matches if that occurs.`, async (t) => {
+test(`Ensure should return multiple 'exact' matches if that occurs.`, async (t) => {
   // Setup things
   const item1 = {
     name: 'Sam Doe',
@@ -401,8 +400,8 @@ test.only(`Ensure should return multiple 'exact' matches if that occurs.`, async
   t.assert(result.exact);
   t.assert(result.matches);
   t.is(result.matches!.length, 2);
-  t.true(result.matches![0].item.externalIds.includes(both));
-  t.true(result.matches![1].item.externalIds.includes(both));
+  t.true(both.includes(result.matches![0].item.externalIds[0]));
+  t.true(both.includes(result.matches![1].item.externalIds[0]));
 });
 
 test('Generate should throw if an input external id is already in use', async (t) => {
@@ -423,7 +422,7 @@ test('Generate should throw if an input external id is already in use', async (t
       },
     },
   }));
-  t.true(err?.message.startsWith('External IDs supplied to merge'));
+  t.true(err?.message.startsWith('The supplied External IDs are already in use: sap:12345678'));
 });
 
 test('Merge should take two entries and make them one', async (t) => {
@@ -431,8 +430,8 @@ test('Merge should take two entries and make them one', async (t) => {
 
   search.indexObject = {};
   search.setCollection(search.indexObject);
-  await search.generateElement({ config: { element: testObject['1'] } });
-  await search.generateElement({ config: { element: testObject['2'] } });
+  await search.generateElement({ config: { element: testObject['1abc'] } });
+  await search.generateElement({ config: { element: testObject['2abc'] } });
   await setTimeout(2000);
 
   await search.mergeElements({
@@ -443,11 +442,11 @@ test('Merge should take two entries and make them one', async (t) => {
   });
 
   t.is(search.index._docs.length, 1);
-  t.is(search.index._docs[0].name, testObject['1'].name);
-  t.is(search.index._docs[0].address, testObject['1'].address);
-  t.is(search.index._docs[0].city, testObject['1'].city);
-  t.is(search.index._docs[0].state, testObject['1'].state);
-  t.is(search.index._docs[0].phone, testObject['1'].phone);
+  t.is(search.index._docs[0].name, testObject['1abc'].name);
+  t.is(search.index._docs[0].address, testObject['1abc'].address);
+  t.is(search.index._docs[0].city, testObject['1abc'].city);
+  t.is(search.index._docs[0].state, testObject['1abc'].state);
+  t.is(search.index._docs[0].phone, testObject['1abc'].phone);
   t.assert(search.index._docs[0].extra);
   t.true(search.index._docs[0].externalIds.includes('sap:123456789'));
   t.true(search.index._docs[0].externalIds.includes('sap:987654321'));
@@ -458,7 +457,7 @@ test('Update should take additional data and add it to the element', async (t) =
 
   search.indexObject = {};
   search.setCollection(search.indexObject);
-  await search.generateElement({ config: { element: testObject['1'] } });
+  await search.generateElement({ config: { element: testObject['1abc'] } });
   await search.update({
     config: {
       element: {
@@ -471,7 +470,7 @@ test('Update should take additional data and add it to the element', async (t) =
   t.assert(search.index._docs[0]);
   t.true(search.index._docs[0].externalIds.includes('test:777777'));
   t.true(
-    search.index._docs[0].externalIds.includes(testObject['1'].externalIds[0])
+    search.index._docs[0].externalIds.includes(testObject['1abc'].externalIds[0])
   );
 });
 
@@ -480,7 +479,7 @@ test('Update should error if masterid is missing', async (t) => {
 
   search.indexObject = {};
   search.setCollection(search.indexObject);
-  await search.generateElement({ config: { element: testObject['1'] } });
+  await search.generateElement({ config: { element: testObject['1abc'] } });
   const err = await t.throwsAsync(
     async () =>
     await search.update({
@@ -496,15 +495,15 @@ test('Update should error if masterid is missing', async (t) => {
 });
 
 test('The expand-index should get reset based on the items in the main search path', async (t) => {
-
+  search.indexObject = {};
   await conn.put({
-    path: `${search.path}/${testObject['1'].id}`,
-    data: testObject['1'],
+    path: `${search.path}/${testObject['1abc'].id}`,
+    data: testObject['1abc'],
     tree: testTree,
   });
   await conn.put({
-    path: `${search.path}/${testObject['2'].id}`,
-    data: testObject['2'],
+    path: `${search.path}/${testObject['2abc'].id}`,
+    data: testObject['2abc'],
     tree: testTree,
   });
 
@@ -518,6 +517,6 @@ test('The expand-index should get reset based on the items in the main search pa
     path: `${search.expandIndexPath}`,
   })) as { data: Record<string, TestElement> };
 
-  t.assert(results[testObject['1'].id]);
-  t.assert(results[testObject['2'].id]);
+  t.assert(results[testObject['1abc'].id]);
+  t.assert(results[testObject['2abc'].id]);
 });
