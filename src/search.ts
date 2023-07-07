@@ -361,17 +361,24 @@ export class Search<Element extends ElementBase> {
       path: `/${from}`,
     })) as unknown as { data: Element };
 
-    // Combine the two elements generically; take the union of the content, but
-    // take the TO values over the FROM values; concat the externalIds
-    await this.oada.put({
-      path: `/${to}`,
-      data: {
+    // Provide an opportunity for some additional merge steps
+    const data = this.merge ? await this.merge(this.oada, job)
+      // Combine the two elements generically; take the union of the content, but
+      // take the TO values over the FROM values; concat the externalIds
+      : {
         ...fromElement,
         ...toElement,
         externalIds: Array.from(new Set(toElement.externalIds ?? [])).concat(
           fromElement.externalIds ?? []
         ),
-      },
+       };
+    await this.oada.put({
+      path: `/${to}`,
+      data,
+    });
+    await this.setItem({
+      pointer: data.masterid.replace(/^resources\//, ''),
+      item: data,
     });
 
     // Delete the element to fail over any queries during the merge
@@ -383,8 +390,6 @@ export class Search<Element extends ElementBase> {
     // Optimistic removal
     await this.removeItemExpand({ pointer: fromKey });
     await this.removeItem({ pointer: fromKey });
-    // Provide an opportunity for some additional merge steps
-    if (this.merge) await this.merge(this.oada, job);
   }
 
   async update(job: {
