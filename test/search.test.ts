@@ -425,7 +425,7 @@ test('Generate should throw if an input external id is already in use', async (t
   t.true(err?.message.startsWith('The supplied External IDs are already in use: sap:12345678'));
 });
 
-test.only('Merge should take two entries and make them one', async (t) => {
+test('Merge should take two entries and make them one', async (t) => {
   t.timeout(30_000);
 
   search.indexObject = {};
