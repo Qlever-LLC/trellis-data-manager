@@ -16,7 +16,7 @@
  */
 
 import _ from 'lodash';
-import config from '../dist/config.js';
+import { config } from '../dist/config.js';
 import test from 'ava';
 import { connect } from '@oada/client';
 import type { OADAClient } from '@oada/client';

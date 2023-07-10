@@ -20,7 +20,8 @@ import '@oada/pino-debug';
 
 // Import this first to setup the environment
 //import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
-import config from './config.js';
+import cloneDeep from 'clone-deep';
+import { config } from './config.js';
 import { connect } from '@oada/client';
 import debug from 'debug';
 import esMain from 'es-main';
@@ -31,7 +32,6 @@ import { Search } from './search.js';
 import { Service } from '@oada/jobs';
 import type TradingPartner from '@oada/types/trellis/trading-partners/trading-partner.js';
 import { tree } from './tree.masterData.js';
-import _ from 'lodash';
 const log = {
   error: debug('tdm:error'),
   info: debug('tdm:info'),
@@ -47,7 +47,7 @@ const path = PRODUCTION
   ? `/bookmarks/trellisfw/trading-partners`
   : `/bookmarks/test/trading-partners`;
 let oada: OADAClient;
-tree.bookmarks!.test = _.cloneDeep(tree.bookmarks!.trellisfw) ?? {};
+tree.bookmarks!.test = cloneDeep(tree.bookmarks!.trellisfw) ?? {};
 
 /**
  * Start-up for a given user (token)

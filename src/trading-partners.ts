@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import config from './config.masterdata.js';
+import { config } from './config.js';
 import debug from 'debug';
 import type { OADAClient } from '@oada/client';
 import tree from './tree.masterData.js';

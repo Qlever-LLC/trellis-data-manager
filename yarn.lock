@@ -338,9 +338,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oada/list-lib@npm:^4.2.6":
-  version: 4.2.6
-  resolution: "@oada/list-lib@npm:4.2.6"
+"@oada/list-lib@portal:/home/sanoel/list-lib::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A.":
+  version: 0.0.0-use.local
+  resolution: "@oada/list-lib@portal:/home/sanoel/list-lib::locator=%40qlever-llc%2Ftrellis-data-manager%40workspace%3A."
   dependencies:
     "@oada/types": ^3.3.0
     abort-controller: ^3.0.0
@@ -353,9 +353,8 @@ __metadata:
     tslib: ^2.4.1
   peerDependencies:
     "@oada/client": ^4.3.2
-  checksum: 083e8cfc820192bbd18c83748b362fbdf8e73899d9a8e19ec9dc490219323a6645c265da63a280dc49137637ed5f891951e0aa8aa19ec6f52a4dcc0558888068
   languageName: node
-  linkType: hard
+  linkType: soft
 
 "@oada/oadaify@npm:^2.1.0":
   version: 2.1.0
@@ -449,6 +448,7 @@ __metadata:
     "@oada/pino-debug": ^3.9.1
     "@oada/types": ^3.4.6
     "@tsconfig/node16": ^1.0.3
+    "@types/clone-deep": ^4
     "@types/convict": ^6.1.1
     "@types/debug": ^4.1.7
     "@types/lodash": ^4
@@ -458,6 +458,7 @@ __metadata:
     "@yarnpkg/sdks": ^3.0.0-rc.39
     ava: 5.2.0
     c8: ^7.12.0
+    clone-deep: ^4.0.1
     convict: ^6.2.4
     convict-format-with-moment: ^6.2.0
     debug: ^4.3.4
@@ -552,6 +553,13 @@ __metadata:
     "@types/node": "*"
     "@types/responselike": "*"
   checksum: 667d25808dbf46fe104d6f029e0281ff56058d50c7c1b9182774b3e38bb9c1124f56e4c367ba54f92dbde2d1cc573f26eb0e9748710b2822bc0fd1e5498859c6
+  languageName: node
+  linkType: hard
+
+"@types/clone-deep@npm:^4":
+  version: 4.0.1
+  resolution: "@types/clone-deep@npm:4.0.1"
+  checksum: 0a467f6772783cf131b57cac57feceb976148931275e4dbecb8471e86821c00d2519763e58d20943e8dfbcae0b96670b77138f064b67fdb6071aca6cdf3d3ecd
   languageName: node
   linkType: hard
 

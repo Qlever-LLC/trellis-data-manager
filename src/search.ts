@@ -18,7 +18,7 @@
 import type { Service, WorkerFunction } from '@oada/jobs';
 import { ChangeType } from '@oada/list-lib';
 import Fuse from 'fuse.js';
-import config from './config.js';
+import { config } from './config.js';
 import debug from 'debug';
 import { JsonPointer } from 'json-ptr';
 import { ListWatch } from '@oada/list-lib';
@@ -203,7 +203,6 @@ export class Search<Element extends ElementBase> {
       this.update.bind(this) as unknown as WorkerFunction
     );
     log.info(`Started ${this.name}-query listener.`);
-
   }
 
   setCollection(data: Record<string, Element>) {
@@ -302,7 +301,7 @@ export class Search<Element extends ElementBase> {
       Object.entries(item).filter(([k, _]) => !k.startsWith('_'))
     );
     try {
-      await this.oada.ensure({
+      await this.oada.put({
         path: `${this.expandIndexPath}/${key}`,
         data: item,
       });

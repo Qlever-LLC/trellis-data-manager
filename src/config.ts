@@ -15,14 +15,9 @@
  * limitations under the License.
  */
 
-import 'dotenv/config';
+import libConfig from '@oada/lib-config';
 
-import convict from 'convict';
-import { duration } from 'convict-format-with-moment';
-
-convict.addFormat(duration);
-
-const config = convict({
+export const { config } = await libConfig({
   production: {
     doc: 'Whether to run with production naming/oada paths or else testing prefixes',
     default: false,
@@ -86,7 +81,3 @@ const config = convict({
     },
   },
 });
-
-config.validate({ allowed: 'warn' });
-
-export default config;
