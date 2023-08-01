@@ -80,4 +80,11 @@ export const { config } = await libConfig({
       arg: 'token',
     },
   },
+  concurrency: {
+    doc: 'concurrency',
+    format: Number,
+    default: 1,
+    env: 'CONCURRENCY',
+    arg: 'concurrency',
+  },
 });

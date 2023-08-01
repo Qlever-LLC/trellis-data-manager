@@ -403,9 +403,13 @@ export class Search<Element extends ElementBase> {
     if (!queryResult) throw new Error(`Entry with masterid not found`);
     // Validate that new externalIds are not in use.
     if (element.externalIds && element.externalIds.length > 0) {
-      const invalidXids = (element.externalIds ?? []).filter((xid) =>
-        !queryResult[0].item.externalIds.includes(xid)
-      ).filter((xid) => this.index.search(`=${xid}`).length > 0);
+      const invalidXids = (element.externalIds ?? [])
+        .filter((xid) => !queryResult[0].item.externalIds.includes(xid))
+        .filter((xid) =>
+          this.index
+            .search(`=${xid}`)
+            .some((hit: any) => hit.item.masterid !== element.masterid)
+        );
       // Don't throw, just remove the invalid ones and report out the results
       if (invalidXids.length > 0)
         log.warn(

@@ -18,7 +18,7 @@
 import _ from 'lodash';
 import { config } from '../dist/config.js';
 import test from 'ava';
-import { connect } from '@oada/client';
+import { connect, doJob } from '@oada/client';
 import type { OADAClient } from '@oada/client';
 import { Search } from '../dist/search.js';
 import { Service } from '@oada/jobs';
@@ -86,6 +86,7 @@ test.before('Start up the service', async () => {
   svc = new Service({
     name: 'test-service',
     oada: conn,
+    concurrency: 100,
   });
   await svc.start();
 
@@ -519,4 +520,115 @@ test('The expand-index should get reset based on the items in the main search pa
 
   t.assert(results[testObject['1abc'].id]);
   t.assert(results[testObject['2abc'].id]);
+});
+
+test.skip(`Should introduce race condition duplicates when concurrency defaults to 100`, async (t) => {
+  const element = {
+    name: 'Ensure1',
+    externalIds: ['sap:ensure1'],
+  };
+
+  const type = `${search.name}-ensure`;
+  await Promise.all([
+    doJob(conn, {
+      service: svc.name,
+      type,
+      config: {
+        element,
+      },
+    }),
+    doJob(conn, {
+      service: svc.name,
+      type,
+      config: {
+        element,
+      },
+    }),
+    doJob(conn, {
+      service: svc.name,
+      type,
+      config: {
+        element,
+      },
+    }),
+  ]);
+  await setTimeout(5000);
+
+  const result = (await doJob(conn, {
+    service: svc.name,
+    type,
+    config: {
+      element,
+    },
+  })) as unknown as { result: { matches: any[] }}
+
+  t.is((result?.result?.matches ?? []).length > 1, true);
+});
+
+test.only(`Should not introduce race condition duplicates using concurrency as a fix`, async (t) => {
+  const serv = new Service({
+    name: 'test-serv',
+    oada: conn,
+    concurrency: 1,
+  });
+  await serv.start();
+
+  const srch = new Search<TestElement>({
+    name: 'test-srch',
+    oada: conn,
+    path: '/bookmarks/test',
+    service: serv,
+    tree: testTree,
+    searchKeys: [
+      {
+        name: 'name',
+        weight: 2,
+      },
+      'phone',
+      'email',
+      'address',
+      'city',
+      'state',
+    ],
+  });
+  await srch.init();
+
+  const element = {
+    name: 'Ensure2',
+    externalIds: ['sap:ensure2'],
+  };
+  const type = `${srch.name}-ensure`;
+  await Promise.all([
+    doJob(conn, {
+      service: serv.name,
+      type,
+      config: {
+        element,
+      },
+    }),
+    doJob(conn, {
+      service: serv.name,
+      type,
+      config: {
+        element,
+      },
+    }),
+    doJob(conn, {
+      service: serv.name,
+      type,
+      config: {
+        element,
+      },
+    }),
+  ]);
+  await setTimeout(5000);
+
+  const result = (await doJob(conn, {
+    service: serv.name,
+    type,
+    config: {
+      element,
+    },
+  })) as unknown as { result: { matches?: any[] }}
+  t.is((result?.result?.matches ?? []).length === 1, true);
 });

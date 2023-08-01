@@ -272,9 +272,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oada/jobs@npm:^4.2.5, @oada/jobs@npm:^4.4.2":
-  version: 4.4.2
-  resolution: "@oada/jobs@npm:4.4.2"
+"@oada/jobs@npm:^4.2.5, @oada/jobs@npm:^4.4.4":
+  version: 4.4.4
+  resolution: "@oada/jobs@npm:4.4.4"
   dependencies:
     "@ava/typescript": ^3.0.1
     "@oada/client": ^4.5.4
@@ -297,6 +297,7 @@ __metadata:
     ksuid: ^3.0.0
     minimist: ^1.2.7
     moment: ^2.29.4
+    p-queue: ^7.3.4
     p-timeout: ^6.1.0
     serialize-error: ^11.0.0
     tiny-json-http: ^7.4.2
@@ -304,7 +305,7 @@ __metadata:
     xlsx: ^0.18.5
   bin:
     oada-jobs: ./src/cli.mjs
-  checksum: 8a703260fd385aae8bb7b5cf23f5c008b3d7d093e5cc2d0943dd4e030c5ae69359cfc60c58d180c91aa5632c0a4a6f24f9ac74b72fa55dc7f283387a80abb13e
+  checksum: d3b7f520d30b356493cc40c0b40456d279666e900a6d5e840d337b62087135179c26abfe8611c3e5ca40871d77165ee15fe36c9babf583dae47e8f68fa436921
   languageName: node
   linkType: hard
 
@@ -442,7 +443,7 @@ __metadata:
     "@ava/typescript": ^3.0.1
     "@elastic/elasticsearch": ^8.6.0
     "@oada/client": ^4.5.4
-    "@oada/jobs": ^4.4.2
+    "@oada/jobs": ^4.4.4
     "@oada/lib-config": ^3.5.1
     "@oada/lib-prom": ^3.5.1
     "@oada/list-lib": ^4.2.6

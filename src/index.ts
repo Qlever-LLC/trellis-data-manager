@@ -40,6 +40,7 @@ const log = {
 
 const { token, domain } = config.get('oada');
 const NAME = config.get('service.name');
+//const concurrency = config.get('concurrency');
 const PRODUCTION = config.get('production');
 const SERVICE_NAME = `${PRODUCTION ? '' : 'test-'}${NAME}`;
 
@@ -63,6 +64,7 @@ export async function run() {
   const svc = new Service({
     name: SERVICE_NAME,
     oada: conn,
+    concurrency: 1,
   });
 
   // Catch errors
