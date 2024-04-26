@@ -202,7 +202,7 @@ export class Search<Element extends ElementBase> {
       config.get('timeouts.query'),
       this.update.bind(this) as unknown as WorkerFunction
     );
-    log.info(`Started ${this.name}-query listener.`);
+    log.info(`Started ${this.name}-update listener.`);
   }
 
   setCollection(data: Record<string, Element>) {

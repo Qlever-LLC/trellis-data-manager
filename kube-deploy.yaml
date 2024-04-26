@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    app.kubernetes.io/component: trellis-data-manager
+    app.kubernetes.io/instance: trellis-data-manager
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: trellis-data-manager
+    app.kubernetes.io/part-of: oada
+    app.kubernetes.io/version: 3.9.1
+    helm.sh/chart: oada-3.3.3
+  name: trellis-data-manager
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: trellis-data-manager
+      app.kubernetes.io/instance: trellis-data-manager
+      app.kubernetes.io/name: oada
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/component: trellis-data-manager
+        app.kubernetes.io/instance: trellis-data-manager
+        app.kubernetes.io/name: oada
+    spec:
+      containers:
+      - args:
+        - -c
+        - yarn run start
+        command:
+        - /usr/bin/dumb-init
+        - --rewrite
+        - "15:2"
+        - --
+        - /bin/sh
+        env:
+        - name: CONFIG
+          value: /oada.config.mjs
+        - name: DOMAIN
+          value: http-handler-oada-test
+        envFrom:
+        - configMapRef:
+            name: oada-configmap-oada-test
+        - configMapRef:
+            name: trellis-data-manager-configmap
+        - secretRef:
+            name: trellis-data-manager
+
+        image: ghcr.io/qlever-llc/trellis-data-manager@sha256:
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: prometheus
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: trellis-data-manager
+        ports:
+        - containerPort: 9229
+          name: inspect
+          protocol: TCP
+        - containerPort: 3000
+          name: prometheus
+          protocol: TCP
+        resources:
+          limits:
+            ephemeral-storage: 512Mi
+          requests:
+            cpu: 20m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: service-account-oada-test
+      serviceAccountName: service-account-oada-test
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          sizeLimit: 1Gi
+        name: tmp
+---
+apiVersion: v1
+data:
+    DEBUG: DEBUG-*:error,*:warn,*:info
+    PRODUCTION: "true"
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: oada-test
+    meta.helm.sh/release-namespace: default
+  labels:
+    app.kubernetes.io/component: trellis-data-manager-configmap
+    app.kubernetes.io/instance: oada-test
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: oada
+    app.kubernetes.io/part-of: oada
+    app.kubernetes.io/version: 3.9.1
+    helm.sh/chart: oada-3.3.3
+  name: trellis-data-manager-configmap
+  namespace: default
