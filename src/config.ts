@@ -79,6 +79,13 @@ export const { config } = await libConfig({
       env: 'TOKEN',
       arg: 'token',
     },
+    connectTimeout: {
+      doc: 'OADA API connect timeout',
+      format: Number,
+      default: 20_000,
+      env: 'CONNECT_TIMEOUT',
+      arg: 'connect-timeout',
+    }
   },
   concurrency: {
     doc: 'concurrency',

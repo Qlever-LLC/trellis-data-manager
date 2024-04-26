@@ -38,7 +38,7 @@ const log = {
   trace: debug('tdm:trace'),
 };
 
-const { token, domain } = config.get('oada');
+const { token, domain, connectTimeout } = config.get('oada');
 const NAME = config.get('service.name');
 //const concurrency = config.get('concurrency');
 const PRODUCTION = config.get('production');
@@ -57,7 +57,7 @@ export async function run() {
   // Connect to the OADA API
   const conn = oada
     ? oada.clone(token)
-    : (oada = await connect({ token, domain }));
+    : (oada = await connect({ token, domain, timeouts: { connect: connectTimeout }}));
 
   // Start up the in-memory cache of master data elements
 
