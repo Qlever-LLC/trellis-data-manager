@@ -21,6 +21,7 @@ import Fuse from 'fuse.js';
 import { config } from './config.js';
 import debug from 'debug';
 import { JsonPointer } from 'json-ptr';
+import { Counter, Gauge } from '@oada/lib-prom';
 import { ListWatch } from '@oada/list-lib';
 import type { OADAClient } from '@oada/client';
 import type { Tree } from '@oada/types/oada/tree/v1.js';
@@ -30,6 +31,37 @@ const log = {
   warn: debug('trellis-data-manager-Search:warn'),
   error: debug('trellis-data-manager-Search:error'),
 };
+
+const ensureCount = new Counter({
+  name: 'tdm:ensure',
+  help: 'Counts number of ensure() calls',
+});
+const queryCount = new Counter({
+  name: 'tdm:query',
+  help: 'Counts number of query() calls',
+});
+const generateCount = new Counter({
+  name: 'tdm:generate',
+  help: 'Counts number of generate() calls',
+});
+const updateCount = new Counter({
+  name: 'tdm:update',
+  help: 'Counts number of update() calls',
+});
+const mergeCount = new Counter({
+  name: 'tdm:merge',
+  help: 'Counts number of merge() calls',
+});
+const tpCount = new Gauge({
+  name: 'tdm:merge',
+  help: 'Counts number of merge() calls',
+})
+/*const errorCount = new Counter({
+  name: 'tdm:error',
+  help: 'Counts number of errors',
+});
+*/
+
 
 type ElementBase = {
   masterid?: string;
@@ -206,6 +238,7 @@ export class Search<Element extends ElementBase> {
   }
 
   setCollection(data: Record<string, Element>) {
+    tpCount.set(Object.keys(data).length);
     const collection = Object.values(data).filter(
       (value) => value !== undefined
     );
@@ -214,6 +247,7 @@ export class Search<Element extends ElementBase> {
   }
 
   query(job: { config: { element: Element } }): QueryResult {
+    queryCount.inc();
     let element = Object.fromEntries(
       // Remove non-searchable keys
       Object.entries(job?.config?.element || {}).filter(
@@ -237,6 +271,7 @@ export class Search<Element extends ElementBase> {
   }
 
   async ensure(job: { config: { element: Element } }): Promise<EnsureResult> {
+    ensureCount.inc();
     const queryResult = this.query(job);
     if (queryResult.matches.length > 0) {
       if (queryResult.exact) {
@@ -352,6 +387,7 @@ export class Search<Element extends ElementBase> {
       to: string;
     };
   }): Promise<void> {
+    mergeCount.inc();
     const { from, to } = job.config;
     const { data: toElement } = (await this.oada.get({
       path: `/${to}`,
@@ -396,6 +432,7 @@ export class Search<Element extends ElementBase> {
       element: Element;
     };
   }): Promise<Element> {
+    updateCount.inc();
     const { element } = job.config;
     if (!element.masterid)
       throw new Error(`masterid required for update operation.`);
@@ -440,6 +477,7 @@ export class Search<Element extends ElementBase> {
   }
 
   async generateElement(job: { config: { element: Element } }): Promise<Element> {
+    generateCount.inc();
     let data = job?.config?.element;
     // Each externalid may be in use by one trading partner
     const externalIds = (data.externalIds ?? []).filter(

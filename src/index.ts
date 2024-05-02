@@ -43,7 +43,6 @@ const NAME = config.get('service.name');
 //const concurrency = config.get('concurrency');
 const PRODUCTION = config.get('production');
 const SERVICE_NAME = `${PRODUCTION ? '' : 'test-'}${NAME}`;
-
 const path = PRODUCTION
   ? `/bookmarks/trellisfw/trading-partners`
   : `/bookmarks/test/trading-partners`;
