@@ -53,8 +53,8 @@ const mergeCount = new Counter({
   help: 'Counts number of merge() calls',
 });
 const tpCount = new Gauge({
-  name: 'tdm:merge',
-  help: 'Counts number of merge() calls',
+  name: 'tdm:trading_partners_count',
+  help: 'Counts number of trading partners',
 })
 /*const errorCount = new Counter({
   name: 'tdm:error',
