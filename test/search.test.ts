@@ -34,7 +34,7 @@ testTree.bookmarks!.test =
 let conn: OADAClient;
 let svc: Service;
 
-type TestElement = {
+interface TestElement {
   id?: string;
   name?: string;
   phone?: string;
@@ -45,7 +45,7 @@ type TestElement = {
   externalIds?: string[];
   key?: string;
   masterid?: string;
-};
+}
 
 let search: Search<TestElement>;
 
@@ -135,7 +135,10 @@ test('Query should return no results if no matches are found', (t) => {
 
 test('Query should return a match if one is found', (t) => {
   const result = search.query({ config: { element: { name: 'Jane Smith' } } });
-  t.deepEqual(result.matches[0].item, { key: '2abc', ...search.indexObject['2abc'] });
+  t.deepEqual(result.matches[0].item, {
+    key: '2abc',
+    ...search.indexObject['2abc'],
+  });
 });
 
 test('Query should return matches if multiple are found', (t) => {
@@ -144,8 +147,14 @@ test('Query should return matches if multiple are found', (t) => {
   });
 
   t.is(result.matches.length, 2);
-  t.deepEqual(result.matches[0].item, { key: '2abc', ...search.indexObject['2abc'] });
-  t.deepEqual(result.matches[1].item, { key: '1abc', ...search.indexObject['1abc'] });
+  t.deepEqual(result.matches[0].item, {
+    key: '2abc',
+    ...search.indexObject['2abc'],
+  });
+  t.deepEqual(result.matches[1].item, {
+    key: '1abc',
+    ...search.indexObject['1abc'],
+  });
 });
 
 test(`Query should return 'exact' matches if an externalId exists on an entry`, (t) => {
@@ -183,7 +192,7 @@ test(`Query should return 'exact' matches if sap id and masterid both exist on a
   t.deepEqual(result.matches[0].item, testObject['1abc']);
 });
 
-//TODO: What behavior do we want here?? no 'exact' matches might be nice, but
+// TODO: What behavior do we want here?? no 'exact' matches might be nice, but
 // the code is currently written as OR
 test.skip(`Query should return no 'exact' matches if sap id and masterid exist on separate entries`, (t) => {
   const result = search.query({
@@ -199,7 +208,7 @@ test.skip(`Query should return no 'exact' matches if sap id and masterid exist o
   t.falsy(result.exact);
 });
 
-//TODO: Sounds nice, but this one has also been eliminated to simplify overall behavior
+// TODO: Sounds nice, but this one has also been eliminated to simplify overall behavior
 test.skip(`Query should return matches if the input content is a perfect intersection with a match`, (t) => {
   const result = search.query({
     config: {
@@ -267,8 +276,8 @@ test('Adding an item to the list resource should land it in the collection', asy
 
   const searchObject = Object.fromEntries(
     Object.entries(search.index._docs[0]).filter(
-      ([key]) => !key.startsWith('_')
-    )
+      ([key]) => !key.startsWith('_'),
+    ),
   );
   t.deepEqual(searchObject, data);
 });
@@ -406,24 +415,29 @@ test(`Ensure should return multiple 'exact' matches if that occurs.`, async (t) 
 });
 
 test('Generate should throw if an input external id is already in use', async (t) => {
-  const err = await t.throwsAsync(
-    async () => await search.generateElement({
-    config: {
-      element: {
-        id: '3',
-        name: 'Sam Doe',
-        phone: '1234567890',
-        email: 'sam.doe@example.com',
-        address: '123 Main St.',
-        city: 'Anytown',
-        state: 'USA',
-        masterid: 'resources/777777777',
-        key: '3',
-        externalIds: ['sap:123456789'],
+  const error = await t.throwsAsync(async () =>
+    search.generateElement({
+      config: {
+        element: {
+          id: '3',
+          name: 'Sam Doe',
+          phone: '1234567890',
+          email: 'sam.doe@example.com',
+          address: '123 Main St.',
+          city: 'Anytown',
+          state: 'USA',
+          masterid: 'resources/777777777',
+          key: '3',
+          externalIds: ['sap:123456789'],
+        },
       },
-    },
-  }));
-  t.true(err?.message.startsWith('The supplied External IDs are already in use: sap:12345678'));
+    }),
+  );
+  t.true(
+    error?.message.startsWith(
+      'The supplied External IDs are already in use: sap:12345678',
+    ),
+  );
 });
 
 test('Merge should take two entries and make them one', async (t) => {
@@ -471,7 +485,9 @@ test('Update should take additional data and add it to the element', async (t) =
   t.assert(search.index._docs[0]);
   t.true(search.index._docs[0].externalIds.includes('test:777777'));
   t.true(
-    search.index._docs[0].externalIds.includes(testObject['1abc'].externalIds[0])
+    search.index._docs[0].externalIds.includes(
+      testObject['1abc'].externalIds[0],
+    ),
   );
 });
 
@@ -481,18 +497,17 @@ test('Update should error if masterid is missing', async (t) => {
   search.indexObject = {};
   search.setCollection(search.indexObject);
   await search.generateElement({ config: { element: testObject['1abc'] } });
-  const err = await t.throwsAsync(
-    async () =>
-    await search.update({
+  const error = await t.throwsAsync(async () =>
+    search.update({
       config: {
         element: {
           externalIds: ['test:777777'],
         },
       },
-    })
+    }),
   );
 
-  t.is(err?.message, 'masterid required for update operation.');
+  t.is(error?.message, 'masterid required for update operation.');
 });
 
 test('The expand-index should get reset based on the items in the main search path', async (t) => {
@@ -508,11 +523,11 @@ test('The expand-index should get reset based on the items in the main search pa
     tree: testTree,
   });
 
-  await setTimeout(7_000);
+  await setTimeout(7000);
   // Re-init the search to update the expand-index
   await search.init();
 
-  await setTimeout(7_000);
+  await setTimeout(7000);
 
   const { data: results } = (await conn.get({
     path: `${search.expandIndexPath}`,
@@ -560,7 +575,7 @@ test.skip(`Should introduce race condition duplicates when concurrency defaults 
     config: {
       element,
     },
-  })) as unknown as { result: { matches: any[] }}
+  })) as unknown as { result: { matches: any[] } };
 
   t.is((result?.result?.matches ?? []).length > 1, true);
 });
@@ -629,6 +644,6 @@ test.only(`Should not introduce race condition duplicates using concurrency as a
     config: {
       element,
     },
-  })) as unknown as { result: { matches?: any[] }}
+  })) as unknown as { result: { matches?: any[] } };
   t.is((result?.result?.matches ?? []).length === 1, true);
 });

@@ -20,7 +20,7 @@
     "tags.*": true,
     "**/.pnp.*": true
   },
-  "prettier.prettierPath": ".yarn/sdks/prettier/index.js",
+  "prettier.prettierPath": ".yarn/sdks/prettier/index.cjs",
   "typescript.tsdk": ".yarn/sdks/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "eslint.nodePath": ".yarn/sdks",
@@ -54,7 +54,10 @@
   "cSpell.words": [
     "Buildx",
     "codeql",
+    "foodlogiq",
+    "fsqa",
     "lcov",
+    "masterid",
     "pino",
     "Snyk",
     "sonarjs",

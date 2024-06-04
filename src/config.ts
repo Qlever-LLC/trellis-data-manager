@@ -85,7 +85,7 @@ export const { config } = await libConfig({
       default: 20_000,
       env: 'CONNECT_TIMEOUT',
       arg: 'connect-timeout',
-    }
+    },
   },
   concurrency: {
     doc: 'concurrency',
@@ -95,3 +95,5 @@ export const { config } = await libConfig({
     arg: 'concurrency',
   },
 });
+
+export default config;

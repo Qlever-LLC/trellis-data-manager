@@ -16,13 +16,12 @@
  */
 
 import type { Service, WorkerFunction } from '@oada/jobs';
-import { ChangeType } from '@oada/list-lib';
+import { ChangeType, ListWatch } from '@oada/list-lib';
 import Fuse from 'fuse.js';
 import { config } from './config.js';
 import debug from 'debug';
 import { JsonPointer } from 'json-ptr';
 import { Counter, Gauge } from '@oada/lib-prom';
-import { ListWatch } from '@oada/list-lib';
 import type { OADAClient } from '@oada/client';
 import type { Tree } from '@oada/types/oada/tree/v1.js';
 
@@ -55,18 +54,17 @@ const mergeCount = new Counter({
 const tpCount = new Gauge({
   name: 'tdm:trading_partners_count',
   help: 'Counts number of trading partners',
-})
-/*const errorCount = new Counter({
+});
+/* Const errorCount = new Counter({
   name: 'tdm:error',
   help: 'Counts number of errors',
 });
 */
 
-
-type ElementBase = {
+interface ElementBase {
   masterid?: string;
-  externalIds?: string[];
-};
+  externalIds?: readonly string[];
+}
 
 export class Search<Element extends ElementBase> {
   tree: Tree;
@@ -130,10 +128,10 @@ export class Search<Element extends ElementBase> {
     this.service = service;
     this.searchKeys = searchKeys ?? [];
     this.searchKeysList = this.searchKeys.map((index) =>
-      typeof index === 'string' ? index : index.name
+      typeof index === 'string' ? index : index.name,
     );
     this.exactKeys = Array.from(
-      new Set(['masterid', 'externalIds'].concat(exactKeys ?? []))
+      new Set(['masterid', 'externalIds'].concat(exactKeys ?? [])),
     );
     const options = {
       includeScore: true,
@@ -169,8 +167,8 @@ export class Search<Element extends ElementBase> {
         data: {},
         tree: this.tree,
       });
-    } catch(err) {
-      console.log(err);
+    } catch (error) {
+      console.log(error);
     }
 
     this.#watch = new ListWatch({
@@ -199,7 +197,7 @@ export class Search<Element extends ElementBase> {
     })) as unknown as { data: Record<string, Element> };
 
     data = Object.fromEntries(
-      Object.entries(data).filter(([k, _]) => !k.startsWith('_'))
+      Object.entries(data).filter(([k, _]) => !k.startsWith('_')),
     );
 
     this.indexObject = data;
@@ -208,31 +206,31 @@ export class Search<Element extends ElementBase> {
     this.service.on(
       `${this.name}-query`,
       config.get('timeouts.query'),
-      this.query.bind(this) as unknown as WorkerFunction
+      this.query.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-query listener.`);
     this.service.on(
       `${this.name}-generate`,
       config.get('timeouts.query'),
-      this.generateElement.bind(this) as unknown as WorkerFunction
+      this.generateElement.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-generate listener.`);
     this.service.on(
       `${this.name}-ensure`,
       config.get('timeouts.query'),
-      this.ensure.bind(this) as unknown as WorkerFunction
+      this.ensure.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-ensure listener.`);
     this.service.on(
       `${this.name}-merge`,
       config.get('timeouts.query'),
-      this.mergeElements.bind(this) as unknown as WorkerFunction
+      this.mergeElements.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-merge listener.`);
     this.service.on(
       `${this.name}-update`,
       config.get('timeouts.query'),
-      this.update.bind(this) as unknown as WorkerFunction
+      this.update.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-update listener.`);
   }
@@ -240,7 +238,7 @@ export class Search<Element extends ElementBase> {
   setCollection(data: Record<string, Element>) {
     tpCount.set(Object.keys(data).length);
     const collection = Object.values(data).filter(
-      (value) => value !== undefined
+      (value) => value !== undefined,
     );
 
     this.index.setCollection(collection);
@@ -252,18 +250,20 @@ export class Search<Element extends ElementBase> {
       // Remove non-searchable keys
       Object.entries(job?.config?.element || {}).filter(
         ([k, _]) =>
-          this.searchKeysList.includes(k) || this.exactKeys?.includes(k)
-      )
+          this.searchKeysList.includes(k) || this.exactKeys?.includes(k),
+      ),
     );
     if (!element || element === undefined || Object.keys(element).length === 0)
-      throw new Error('Query Error: Invalid input search element at job.config.element');
+      throw new Error(
+        'Query Error: Invalid input search element at job.config.element',
+      );
 
     // First find exact matches using primary keys
     const exactMatches = this.exactSearch(element);
 
     if (exactMatches.length > 0) return { exact: true, matches: exactMatches };
     element = Object.fromEntries(
-      Object.entries(element || {}).filter(([_, v]) => !Array.isArray(v))
+      Object.entries(element || {}).filter(([_, v]) => !Array.isArray(v)),
     );
 
     // TODO: Create permutations of element keys, search them, and compile results...
@@ -310,14 +310,14 @@ export class Search<Element extends ElementBase> {
       .map((ek) =>
         typeof element[ek] === 'string'
           ? `=${element[ek]}`
-          : element[ek].map((k: any) => `=${k}`).join(' | ')
+          : element[ek].map((k: any) => `=${k}`).join(' | '),
       )
       .join(` | `);
 
     return this.index.search(exactString);
   }
 
-  async setItem({ item, pointer }: { item: any, pointer: string }) {
+  async setItem({ item, pointer }: { item: any; pointer: string }) {
     const id = pointer.replace(/^\//, '');
     if (id === 'expand-index') return;
 
@@ -326,22 +326,22 @@ export class Search<Element extends ElementBase> {
     this.setCollection(this.indexObject);
   }
 
-  async setItemExpand({ item, pointer }: { item: any, pointer: string }) {
+  async setItemExpand({ item, pointer }: { item: any; pointer: string }) {
     const key = pointer.replace(/^\//, '');
     if (key === 'expand-index' || key.startsWith('_')) return;
 
     item = await item;
 
     item = Object.fromEntries(
-      Object.entries(item).filter(([k, _]) => !k.startsWith('_'))
+      Object.entries(item).filter(([k, _]) => !k.startsWith('_')),
     );
     try {
       await this.oada.put({
         path: `${this.expandIndexPath}/${key}`,
         data: item,
       });
-    } catch(err) {
-      console.log(err);
+    } catch (error) {
+      console.log(error);
     }
   }
 
@@ -361,7 +361,7 @@ export class Search<Element extends ElementBase> {
   }
 
   /**
-   * updates the expand index with the information extracted
+   * Updates the expand index with the information extracted
    * from the received FL business
    * @param data expand index content
    */
@@ -397,16 +397,17 @@ export class Search<Element extends ElementBase> {
     })) as unknown as { data: Element };
 
     // Provide an opportunity for some additional merge steps
-    const data = this.merge ? await this.merge(this.oada, job)
-      // Combine the two elements generically; take the union of the content, but
-      // take the TO values over the FROM values; concat the externalIds
-      : {
-        ...fromElement,
-        ...toElement,
-        externalIds: Array.from(new Set(toElement.externalIds ?? [])).concat(
-          fromElement.externalIds ?? []
-        ),
-       };
+    const data = this.merge
+      ? await this.merge(this.oada, job)
+      : // Combine the two elements generically; take the union of the content, but
+        // take the TO values over the FROM values; concat the externalIds
+        {
+          ...fromElement,
+          ...toElement,
+          externalIds: Array.from(new Set(toElement.externalIds ?? [])).concat(
+            fromElement.externalIds ?? [],
+          ),
+        };
     await this.oada.put({
       path: `/${to}`,
       data,
@@ -434,35 +435,39 @@ export class Search<Element extends ElementBase> {
   }): Promise<Element> {
     updateCount.inc();
     const { element } = job.config;
-    if (!element.masterid)
+    if (!element.masterid) {
       throw new Error(`masterid required for update operation.`);
+    }
     const queryResult = this.index.search(`=${element.masterid}`);
     if (!queryResult) throw new Error(`Entry with masterid not found`);
     // Validate that new externalIds are not in use.
     if (element.externalIds && element.externalIds.length > 0) {
-      const invalidXids = (element.externalIds ?? [])
+      const invalidExternalIds = (element.externalIds ?? [])
         .filter((xid) => !queryResult[0].item.externalIds.includes(xid))
         .filter((xid) =>
           this.index
             .search(`=${xid}`)
-            .some((hit: any) => hit.item.masterid !== element.masterid)
+            .some((hit: any) => hit.item.masterid !== element.masterid),
         );
       // Don't throw, just remove the invalid ones and report out the results
-      if (invalidXids.length > 0)
+      if (invalidExternalIds.length > 0)
         log.warn(
-          `The supplied External IDs are already in use: ${invalidXids.join(', ')}`
+          `The supplied External IDs are already in use: ${invalidExternalIds.join(', ')}`,
         );
 
       element.externalIds = Array.from(
         new Set([
           ...(queryResult[0].item.externalIds ?? []),
-          ...element.externalIds.filter(xid => !invalidXids.includes(xid))
-        ])
+          ...element.externalIds.filter(
+            (xid) => !invalidExternalIds.includes(xid),
+          ),
+        ]),
       );
     }
 
     await this.oada.put({
       path: `/${element.masterid}`,
+      // @ts-expect-error type BS with client
       data: element,
     });
     // Optimistic add to collection so we don't wait for things
@@ -476,17 +481,19 @@ export class Search<Element extends ElementBase> {
     return data as unknown as Element;
   }
 
-  async generateElement(job: { config: { element: Element } }): Promise<Element> {
+  async generateElement(job: {
+    config: { element: Element };
+  }): Promise<Element> {
     generateCount.inc();
     let data = job?.config?.element;
     // Each externalid may be in use by one trading partner
     const externalIds = (data.externalIds ?? []).filter(
-      (xid) => this.index.search(`=${xid}`).length > 0
+      (xid) => this.index.search(`=${xid}`).length > 0,
     );
 
     if (externalIds.length > 0)
       throw new Error(
-        `The supplied External IDs are already in use: ${externalIds}`
+        `The supplied External IDs are already in use: ${externalIds}`,
       );
 
     try {
@@ -534,14 +541,14 @@ export class Search<Element extends ElementBase> {
   }
 }
 
-export type EnsureResult = {
+export interface EnsureResult {
   entry?: any;
   matches?: any[];
   exact?: boolean;
   new?: boolean;
-};
+}
 
-export type QueryResult = {
+export interface QueryResult {
   matches: any[];
   exact?: boolean;
-};
+}

@@ -16,11 +16,11 @@
  */
 
 declare module 'fuse.js' {
-  export default class Fuse<T> {
+  export class Fuse<T> {
     constructor(
-      list: ReadonlyArray<T>,
+      list: readonly T[],
       options?: Fuse.IFuseOptions<T>,
-      index?: Fuse.FuseIndex<T>
+      index?: Fuse.FuseIndex<T>,
     );
     /**
    * Search function for the Fuse instance.
@@ -42,38 +42,31 @@ declare module 'fuse.js' {
    */
     search<R = T>(
       pattern: string | Fuse.Expression,
-      options?: Fuse.FuseSearchOptions
-    ): Fuse.FuseResult<R>[];
-​
-    setCollection(docs: ReadonlyArray<T>, index?: Fuse.FuseIndex<T>): void;
-​
+      options?: Fuse.FuseSearchOptions,
+    ): Array<Fuse.FuseResult<R>>;
+    setCollection(docs: readonly T[], index?: Fuse.FuseIndex<T>): void;
     /**
      * Adds a doc to the end the list.
      */
-    add(doc: T): void;
-​
+    add(document: T): void;
     /**
      * Removes all documents from the list which the predicate returns truthy for,
      * and returns an array of the removed docs.
      * The predicate is invoked with two arguments: (doc, index).
      */
-    remove(predicate: (doc: T, idx: number) => boolean): T[];
-​
+    remove(predicate: (document: T, index: number) => boolean): T[];
     /**
      * Removes the doc at the specified index.
      */
-    removeAt(idx: number): void;
-​
+    removeAt(index: number): void;
     /**
      * Returns the generated Fuse index
      */
     getIndex(): Fuse.FuseIndex<T>;
-​
     /**
      * Return the current version.
      */
     static version: string;
-​
     /**
      * Use this method to pre-generate the index from the list, and pass it
      * directly into the Fuse instance.
@@ -102,39 +95,35 @@ declare module 'fuse.js' {
      */
     static createIndex<U>(
       keys: Array<Fuse.FuseOptionKey<U>>,
-      list: ReadonlyArray<U>,
-      options?: Fuse.FuseIndexOptions<U>
+      list: readonly U[],
+      options?: Fuse.FuseIndexOptions<U>,
     ): Fuse.FuseIndex<U>;
-​
     static parseIndex<U>(
       index: any,
-      options?: Fuse.FuseIndexOptions<U>
+      options?: Fuse.FuseIndexOptions<U>,
     ): Fuse.FuseIndex<U>;
   }
-​
-  declare namespace Fuse {
+  export default Fuse;
+  export namespace Fuse {
     export class FuseIndex<T> {
       constructor(options?: FuseIndexOptions<T>);
-      setSources(docs: ReadonlyArray<T>): void;
-      setKeys(keys: ReadonlyArray<string>): void;
+      setSources(docs: readonly T[]): void;
+      setKeys(keys: readonly string[]): void;
       setIndexRecords(records: FuseIndexRecords): void;
       create(): void;
-      add(doc: T): void;
+      add(document: T): void;
       toJSON(): {
-        keys: ReadonlyArray<string>;
+        keys: readonly string[];
         records: FuseIndexRecords;
       };
     }
-​
     type FuseGetFunction<T> = (
-      obj: T,
-      path: string | string[]
-    ) => ReadonlyArray<string> | string;
-​
-    export type FuseIndexOptions<T> = {
+      object: T,
+      path: string | string[],
+    ) => readonly string[] | string;
+    export interface FuseIndexOptions<T> {
       getFn: FuseGetFunction<T>;
-    };
-​
+    }
     // {
     //   title: { '$': "Old Man's War" },
     //   'author.firstName': { '$': 'Codenar' }
@@ -148,23 +137,22 @@ declare module 'fuse.js' {
     //     { $: 'web development', idx: 1 },
     //   ]
     // }
-    export type FuseSortFunctionItem = {
-      [key: string]: { $: string } | { $: string; idx: number }[];
-    };
-​
+    export type FuseSortFunctionItem = Record<
+      string,
+      { $: string } | Array<{ $: string; idx: number }>
+    >;
     // {
     //   score: 0.001,
     //   key: 'author.firstName',
     //   value: 'Codenar',
     //   indices: [ [ 0, 3 ] ]
     // }
-    export type FuseSortFunctionMatch = {
+    export interface FuseSortFunctionMatch {
       score: number;
       key: string;
       value: string;
-      indices: ReadonlyArray<number>[];
-    };
-​
+      indices: Array<readonly number[]>;
+    }
     // {
     //   score: 0,
     //   key: 'tags',
@@ -175,30 +163,26 @@ declare module 'fuse.js' {
     export type FuseSortFunctionMatchList = FuseSortFunctionMatch & {
       idx: number;
     };
-​
-    export type FuseSortFunctionArg = {
+    export interface FuseSortFunctionArgument {
       idx: number;
       item: FuseSortFunctionItem;
       score: number;
-      matches?: (FuseSortFunctionMatch | FuseSortFunctionMatchList)[];
-    };
-​
+      matches?: Array<FuseSortFunctionMatch | FuseSortFunctionMatchList>;
+    }
     export type FuseSortFunction = (
-      a: FuseSortFunctionArg,
-      b: FuseSortFunctionArg
+      a: FuseSortFunctionArgument,
+      b: FuseSortFunctionArgument,
     ) => number;
-​
-    // title: {
+    // Title: {
     //   '$': "Old Man's War",
     //   'n': 0.5773502691896258
     // }
-    type RecordEntryObject = {
+    interface RecordEntryObject {
       /** The text value */
       v: string;
       /** The field-length norm */
       n: number;
-    };
-​
+    }
     // 'author.tags.name': [{
     //   'v': 'pizza lover',
     //   'i': 2,
@@ -207,12 +191,8 @@ declare module 'fuse.js' {
     type RecordEntryArrayItem = ReadonlyArray<
       RecordEntryObject & { i: number }
     >;
-​
     // TODO: this makes it difficult to infer the type. Need to think more about this
-    type RecordEntry = {
-      [key: string]: RecordEntryObject | RecordEntryArrayItem;
-    };
-​
+    type RecordEntry = Record<string, RecordEntryObject | RecordEntryArrayItem>;
     // {
     //   i: 0,
     //   '$': {
@@ -225,12 +205,11 @@ declare module 'fuse.js' {
     //     ]
     //   }
     // }
-    type FuseIndexObjectRecord = {
+    interface FuseIndexObjectRecord {
       /** The index of the record in the source list */
       i: number;
       $: RecordEntry;
-    };
-​
+    }
     // {
     //   keys: null,
     //   list: [
@@ -239,31 +218,27 @@ declare module 'fuse.js' {
     //     { v: 'three', i: 2, n: 1 }
     //   ]
     // }
-    type FuseIndexStringRecord = {
+    interface FuseIndexStringRecord {
       /** The index of the record in the source list */
       i: number;
       /** The text value */
       v: string;
       /** The field-length norm */
       n: number;
-    };
-​
+    }
     type FuseIndexRecords =
-      | ReadonlyArray<FuseIndexObjectRecord>
-      | ReadonlyArray<FuseIndexStringRecord>;
-​
+      | readonly FuseIndexObjectRecord[]
+      | readonly FuseIndexStringRecord[];
     // {
     //   name: 'title',
     //   weight: 0.7
     // }
-    export type FuseOptionKeyObject<T> = {
+    export interface FuseOptionKeyObject<T> {
       name: string | string[];
       weight?: number;
-      getFn?: (obj: T) => ReadonlyArray<string> | string;
-    };
-​
+      getFn?: (object: T) => readonly string[] | string;
+    }
     export type FuseOptionKey<T> = FuseOptionKeyObject<T> | string | string[];
-​
     export interface IFuseOptions<T> {
       /** Indicates whether comparisons should be case sensitive. */
       isCaseSensitive?: boolean;
@@ -298,7 +273,6 @@ declare module 'fuse.js' {
       /** When `true`, it enables the use of unix-like search commands. See [example](/examples.html#extended-search). */
       useExtendedSearch?: boolean;
     }
-​
     /**
      * Denotes the start/end indices of a match
      *
@@ -312,34 +286,29 @@ declare module 'fuse.js' {
      * ```
      */
     type RangeTuple = [number, number];
-​
-    export type FuseResultMatch = {
-      indices: ReadonlyArray<RangeTuple>;
+    export interface FuseResultMatch {
+      indices: readonly RangeTuple[];
       key?: string;
       refIndex?: number;
       value?: string;
-    };
-​
-    export type FuseSearchOptions = {
+    }
+    export interface FuseSearchOptions {
       limit: number;
-    };
-​
-    export type FuseResult<T> = {
+    }
+    export interface FuseResult<T> {
       item: T;
       refIndex: number;
       score?: number;
-      matches?: ReadonlyArray<FuseResultMatch>;
-    };
-​
+      matches?: readonly FuseResultMatch[];
+    }
     export type Expression =
-      | { [key: string]: string }
+      | Record<string, string>
       | {
-        $path: ReadonlyArray<string>;
-        $val: string;
-      }
+          $path: readonly string[];
+          $val: string;
+        }
       | { $and?: Expression[] }
       | { $or?: Expression[] };
-​
     export const config: Required<IFuseOptions<any>>;
   }
 }

@@ -19,14 +19,13 @@
 import '@oada/pino-debug';
 
 // Import this first to setup the environment
-//import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
+// import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
 import cloneDeep from 'clone-deep';
 import { config } from './config.js';
 import { connect } from '@oada/client';
 import debug from 'debug';
 import esMain from 'es-main';
-import { generateTP } from './trading-partners.js';
-import { mergeTPs } from './trading-partners.js';
+import { generateTP, mergeTPs } from './trading-partners.js';
 import type { OADAClient } from '@oada/client';
 import { Search } from './search.js';
 import { Service } from '@oada/jobs';
@@ -40,7 +39,7 @@ const log = {
 
 const { token, domain, connectTimeout } = config.get('oada');
 const NAME = config.get('service.name');
-//const concurrency = config.get('concurrency');
+// Const concurrency = config.get('concurrency');
 const PRODUCTION = config.get('production');
 const SERVICE_NAME = `${PRODUCTION ? '' : 'test-'}${NAME}`;
 const path = PRODUCTION
@@ -56,7 +55,11 @@ export async function run() {
   // Connect to the OADA API
   const conn = oada
     ? oada.clone(token)
-    : (oada = await connect({ token, domain, timeouts: { connect: connectTimeout }}));
+    : (oada = await connect({
+        token,
+        domain,
+        timeouts: { connect: connectTimeout },
+      }));
 
   // Start up the in-memory cache of master data elements
 
@@ -74,7 +77,7 @@ export async function run() {
       path,
       name: 'trading-partners',
       service: svc,
-      //assert: assertTP,
+      // Assert: assertTP,
       generate: generateTP,
       merge: mergeTPs,
       tree,

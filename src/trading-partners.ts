@@ -86,7 +86,7 @@ export async function generateTP(oada: OADAClient) {
     throw error_;
   }
 
-  const bookmarksId = bookmarks!.replace(/^\//, '');
+  const bookmarksId = bookmarks?.replace(/^\//, '');
   info(`/bookmarks created for trading partner`);
 
   let shared;
@@ -102,7 +102,7 @@ export async function generateTP(oada: OADAClient) {
     throw error_;
   }
 
-  const sharedId = shared!.replace(/^\//, '');
+  const sharedId = shared?.replace(/^\//, '');
   info(`/shared created for trading partner`);
 
   return {
@@ -124,7 +124,7 @@ async function mergeDocumentTree(oada: OADAClient, from: string, to: string) {
   try {
     const { data: documentTypes } = await oada.get({ path: `${fromPath}` });
     documentTypeKeys = Object.keys(documentTypes ?? {}).filter(
-      (k) => !k.startsWith('_')
+      (k) => !k.startsWith('_'),
     );
   } catch (error: any) {
     if (error.status !== 404) throw error;
@@ -137,8 +137,8 @@ async function mergeDocumentTree(oada: OADAClient, from: string, to: string) {
       });
       const documents = Object.fromEntries(
         Object.entries(documentType ?? {}).filter(
-          ([key, _]) => !key.startsWith('_')
-        )
+          ([key, _]) => !key.startsWith('_'),
+        ),
       );
       await oada.put({
         path: `${toPath}/${type}`,
