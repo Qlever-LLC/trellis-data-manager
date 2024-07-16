@@ -57,11 +57,14 @@
     "foodlogiq",
     "fsqa",
     "lcov",
+    "Logiq",
     "masterid",
+    "partnerid",
     "pino",
     "Snyk",
     "sonarjs",
-    "trellisfw"
+    "trellisfw",
+    "vendorid"
   ],
   "eslint.format.enable": true,
   "eslint.lintTask.enable": true,

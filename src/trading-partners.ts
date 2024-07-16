@@ -16,8 +16,11 @@
  */
 
 import { config } from './config.js';
+
 import debug from 'debug';
+
 import type { OADAClient } from '@oada/client';
+
 import tree from './tree.masterData.js';
 
 const SERVICE_NAME = config.get('service.name');

@@ -16,6 +16,7 @@
     "noImplicitAny": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
+    "noErrorTruncation": true,
     "sourceMap": true,
     "forceConsistentCasingInFileNames": true,
     "rootDir": "src",

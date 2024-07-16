@@ -17,52 +17,6 @@
 
 declare module 'fuse.js' {
   export class Fuse<T> {
-    constructor(
-      list: readonly T[],
-      options?: Fuse.IFuseOptions<T>,
-      index?: Fuse.FuseIndex<T>,
-    );
-    /**
-   * Search function for the Fuse instance.
-   *
-   * ```typescript
-   * const list: MyType[] = [myType1, myType2, etc...]
-​
-   * const options: Fuse.IFuseOptions<MyType> = {
-   *  keys: ['key1', 'key2']
-   * }
-   *
-   * const myFuse = new Fuse(list, options)
-   * let result = myFuse.search('pattern')
-   * ```
-   *
-   * @param pattern The pattern to search
-   * @param options `Fuse.FuseSearchOptions`
-   * @returns An array of search results
-   */
-    search<R = T>(
-      pattern: string | Fuse.Expression,
-      options?: Fuse.FuseSearchOptions,
-    ): Array<Fuse.FuseResult<R>>;
-    setCollection(docs: readonly T[], index?: Fuse.FuseIndex<T>): void;
-    /**
-     * Adds a doc to the end the list.
-     */
-    add(document: T): void;
-    /**
-     * Removes all documents from the list which the predicate returns truthy for,
-     * and returns an array of the removed docs.
-     * The predicate is invoked with two arguments: (doc, index).
-     */
-    remove(predicate: (document: T, index: number) => boolean): T[];
-    /**
-     * Removes the doc at the specified index.
-     */
-    removeAt(index: number): void;
-    /**
-     * Returns the generated Fuse index
-     */
-    getIndex(): Fuse.FuseIndex<T>;
     /**
      * Return the current version.
      */
@@ -102,6 +56,52 @@ declare module 'fuse.js' {
       index: any,
       options?: Fuse.FuseIndexOptions<U>,
     ): Fuse.FuseIndex<U>;
+    constructor(
+      list: readonly T[],
+      options?: Fuse.IFuseOptions<T>,
+      index?: Fuse.FuseIndex<T>,
+    );
+    /**
+     * Search function for the Fuse instance.
+     *
+     * ```typescript
+     * const list: MyType[] = [myType1, myType2, etc...]
+     *
+     * const options: Fuse.IFuseOptions<MyType> = {
+     *  keys: ['key1', 'key2']
+     * }
+     *
+     * const myFuse = new Fuse(list, options)
+     * let result = myFuse.search('pattern')
+     * ```
+     *
+     * @param pattern The pattern to search
+     * @param options `Fuse.FuseSearchOptions`
+     * @returns An array of search results
+     */
+    search<R = T>(
+      pattern: string | Fuse.Expression,
+      options?: Fuse.FuseSearchOptions,
+    ): Array<Fuse.FuseResult<R>>;
+    setCollection(docs: readonly T[], index?: Fuse.FuseIndex<T>): void;
+    /**
+     * Adds a doc to the end the list.
+     */
+    add(document: T): void;
+    /**
+     * Removes all documents from the list which the predicate returns truthy for,
+     * and returns an array of the removed docs.
+     * The predicate is invoked with two arguments: (doc, index).
+     */
+    remove(predicate: (document: T, index: number) => boolean): T[];
+    /**
+     * Removes the doc at the specified index.
+     */
+    removeAt(index: number): void;
+    /**
+     * Returns the generated Fuse index
+     */
+    getIndex(): Fuse.FuseIndex<T>;
   }
   export default Fuse;
   export namespace Fuse {

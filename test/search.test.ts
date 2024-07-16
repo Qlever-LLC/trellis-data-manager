@@ -15,21 +15,27 @@
  * limitations under the License.
  */
 
-import _ from 'lodash';
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { config } from '../dist/config.js';
+
 import test from 'ava';
-import { connect, doJob } from '@oada/client';
-import type { OADAClient } from '@oada/client';
-import { Search } from '../dist/search.js';
-import { Service } from '@oada/jobs';
-import { tree } from '../dist/tree.masterData.js';
+
 import { setTimeout } from 'node:timers/promises';
+
+import type { OADAClient } from '@oada/client';
+import { Service } from '@oada/jobs';
+import { connect } from '@oada/client';
+import { doJob } from '@oada/client/jobs';
+
+import { Search } from '../dist/search.js';
+import { tree } from '../dist/tree.masterData.js';
 
 const { token, domain } = config.get('oada');
 
-const testTree = _.cloneDeep(tree);
+const testTree = structuredClone(tree);
 testTree.bookmarks!.test =
-  _.cloneDeep(testTree.bookmarks!.trellisfw!['trading-partners']) ?? {};
+  structuredClone(testTree.bookmarks!.trellisfw!['trading-partners']) ?? {};
 
 let conn: OADAClient;
 let svc: Service;
@@ -118,7 +124,7 @@ test.after('Clean up the service', async () => {
 });
 
 test.beforeEach('Start up the service', () => {
-  search.indexObject = _.cloneDeep(testObject);
+  search.indexObject = structuredClone(testObject);
   search.setCollection(search.indexObject);
 });
 

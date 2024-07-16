@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-import type { Service, WorkerFunction } from '@oada/jobs';
-import { ChangeType, ListWatch } from '@oada/list-lib';
-import Fuse from 'fuse.js';
 import { config } from './config.js';
-import debug from 'debug';
+
+import Fuse from 'fuse.js';
 import { JsonPointer } from 'json-ptr';
+import debug from 'debug';
+
+import { ChangeType, ListWatch } from '@oada/list-lib';
 import { Counter, Gauge } from '@oada/lib-prom';
+import type { Service, WorkerFunction } from '@oada/jobs';
 import type { OADAClient } from '@oada/client';
 import type { Tree } from '@oada/types/oada/tree/v1.js';
 
@@ -438,6 +440,7 @@ export class Search<Element extends ElementBase> {
     if (!element.masterid) {
       throw new Error(`masterid required for update operation.`);
     }
+
     const queryResult = this.index.search(`=${element.masterid}`);
     if (!queryResult) throw new Error(`Entry with masterid not found`);
     // Validate that new externalIds are not in use.
