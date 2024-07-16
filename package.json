@@ -108,6 +108,9 @@
     "prettier": "^3.3.3",
     "typescript": "^5.5.3"
   },
+  "resolutions": {
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
+  },
   "packageManager": "yarn@4.3.1",
   "volta": {
     "node": "20.14.0"
