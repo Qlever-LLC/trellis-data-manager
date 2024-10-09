@@ -311,9 +311,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oada/client@npm:^5.2.0":
-  version: 5.2.0
-  resolution: "@oada/client@npm:5.2.0"
+"@oada/client@npm:^5.2.1":
+  version: 5.2.1
+  resolution: "@oada/client@npm:5.2.1"
   dependencies:
     "@oada/types": "npm:^3.5.3"
     debug: "npm:^4.3.7"
@@ -340,7 +340,7 @@ __metadata:
   peerDependenciesMeta:
     "@oada/jobs":
       optional: true
-  checksum: 10/d3503f0d8f913c4961cc3a1bebf1c20bb7e73df144da59cfd2b1fb7dcdf21e943a659b4a229bad41a327b52f7dd60cfe81d06134b02e07cb3c29d3dbb20f3664
+  checksum: 10/b89dea9aad07240ccf65d8ea0fc30cd8105b1187f17e4d89d9ffb7668b75a1ae37ce6f987cd1b152b812e299eb62d2533ca07763938e310ee99a2177696d2151
   languageName: node
   linkType: hard
 
@@ -510,7 +510,7 @@ __metadata:
   dependencies:
     "@ava/typescript": "npm:^5.0.0"
     "@elastic/elasticsearch": "npm:^8.15.0"
-    "@oada/client": "npm:^5.2.0"
+    "@oada/client": "npm:^5.2.1"
     "@oada/jobs": "npm:^4.5.2"
     "@oada/lib-config": "npm:^4.0.0"
     "@oada/lib-prom": "npm:^4.0.0"
