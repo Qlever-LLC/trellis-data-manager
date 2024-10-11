@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
+import '@oada/pino-debug';
 import { config } from './config.js';
 
-import debug from 'debug';
+import { type Logger } from '@oada/pino-debug';
 
 import type { OADAClient } from '@oada/client';
 
@@ -28,9 +29,6 @@ const SERVICE_NAME = config.get('service.name');
 if (SERVICE_NAME && tree?.bookmarks?.services?.['fl-sync']) {
   tree.bookmarks.services[SERVICE_NAME] = tree.bookmarks.services['fl-sync'];
 }
-
-const info = debug('trellis-data-manager:trading-partners:info');
-const error = debug('trellis-data-manager:trading-partners:error');
 
 export const trellisTPTemplate = {
   id: '',
@@ -74,7 +72,7 @@ export interface TradingPartner {
   frozen: boolean;
 }
 
-export async function generateTP(oada: OADAClient) {
+export async function generateTP(log: Logger, oada: OADAClient) {
   // Create bookmarks
   let bookmarks;
   try {
@@ -85,12 +83,12 @@ export async function generateTP(oada: OADAClient) {
     });
     bookmarks = headers['content-location'];
   } catch (error_: unknown) {
-    error(error_);
+    log.error(error_);
     throw error_;
   }
 
   const bookmarksId = bookmarks?.replace(/^\//, '');
-  info(`/bookmarks created for trading partner`);
+  log.info(`/bookmarks created for trading partner`);
 
   let shared;
   try {
@@ -101,12 +99,12 @@ export async function generateTP(oada: OADAClient) {
     });
     shared = headers['content-location'];
   } catch (error_: unknown) {
-    error(error_);
+    log.error(error_);
     throw error_;
   }
 
   const sharedId = shared?.replace(/^\//, '');
-  info(`/shared created for trading partner`);
+  log.info(`/shared created for trading partner`);
 
   return {
     bookmarks: {
@@ -129,8 +127,8 @@ async function mergeDocumentTree(oada: OADAClient, from: string, to: string) {
     documentTypeKeys = Object.keys(documentTypes ?? {}).filter(
       (k) => !k.startsWith('_'),
     );
-  } catch (error: any) {
-    if (error.status !== 404) throw error;
+  } catch (err: any) {
+    if (err.status !== 404) throw err;
   }
 
   for await (const type of documentTypeKeys) {

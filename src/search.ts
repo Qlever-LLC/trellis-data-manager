@@ -14,24 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import '@oada/pino-debug';
 import { config } from './config.js';
 
 import Fuse from 'fuse.js';
 import { JsonPointer } from 'json-ptr';
-import debug from 'debug';
 
 import { ChangeType, ListWatch } from '@oada/list-lib';
 import { Counter, Gauge } from '@oada/lib-prom';
 import type { Service, WorkerFunction } from '@oada/jobs';
 import type { OADAClient } from '@oada/client';
+import type { Logger } from '@oada/pino-debug';
 import type { Tree } from '@oada/types/oada/tree/v1.js';
-
-const log = {
-  info: debug('trellis-data-manager-Search:info'),
-  warn: debug('trellis-data-manager-Search:warn'),
-  error: debug('trellis-data-manager-Search:error'),
-};
 
 const ensureCount = new Counter({
   name: 'tdm:ensure',
@@ -74,6 +68,8 @@ export class Search<Element extends ElementBase> {
   expandIndexPath: string;
   // The search index containing the set of known elements
   index: any;
+  // A logger
+  log: Logger;
   // The name of the set of elements
   name: string;
   // The oada client to make requests
@@ -105,6 +101,7 @@ export class Search<Element extends ElementBase> {
     path,
     name,
     service,
+    log,
     searchKeys,
     exactKeys,
   }: {
@@ -116,12 +113,14 @@ export class Search<Element extends ElementBase> {
     path: string;
     name: string;
     service: Service;
+    log: Logger;
     searchKeys?: Array<string | { name: string; weight: number }>;
     exactKeys?: string[];
   }) {
     this.assert = assert;
     this.tree = tree;
     this.generate = generate;
+    this.log = log.child({ 'trellis-data-manager-type': name });
     this.merge = merge;
     this.name = name;
     this.oada = oada;
@@ -170,7 +169,7 @@ export class Search<Element extends ElementBase> {
         tree: this.tree,
       });
     } catch (error) {
-      console.log(error);
+      this.log.error(error);
     }
 
     this.#watch = new ListWatch({
@@ -210,31 +209,31 @@ export class Search<Element extends ElementBase> {
       config.get('timeouts.query'),
       this.query.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-query listener.`);
+    this.log.info(`Started ${this.name}-query listener.`);
     this.service.on(
       `${this.name}-generate`,
       config.get('timeouts.query'),
       this.generateElement.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-generate listener.`);
+    this.log.info(`Started ${this.name}-generate listener.`);
     this.service.on(
       `${this.name}-ensure`,
       config.get('timeouts.query'),
       this.ensure.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-ensure listener.`);
+    this.log.info(`Started ${this.name}-ensure listener.`);
     this.service.on(
       `${this.name}-merge`,
       config.get('timeouts.query'),
       this.mergeElements.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-merge listener.`);
+    this.log.info(`Started ${this.name}-merge listener.`);
     this.service.on(
       `${this.name}-update`,
       config.get('timeouts.query'),
       this.update.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-update listener.`);
+    this.log.info(`Started ${this.name}-update listener.`);
   }
 
   setCollection(data: Record<string, Element>) {
@@ -278,7 +277,7 @@ export class Search<Element extends ElementBase> {
     if (queryResult.matches.length > 0) {
       if (queryResult.exact) {
         if (queryResult.matches.length === 1) {
-          log.info(`An exact match was found. Returning match.`);
+          this.log.info(`An exact match was found. Returning match.`);
           return {
             entry: queryResult.matches[0].item,
             ...queryResult,
@@ -287,7 +286,7 @@ export class Search<Element extends ElementBase> {
         }
 
         if (queryResult.matches.length > 1) {
-          log.warn(`Multiple exact matches were found. Returning matches.`);
+          this.log.warn(`Multiple exact matches were found. Returning matches.`);
           return {
             ...queryResult,
             new: false,
@@ -295,7 +294,7 @@ export class Search<Element extends ElementBase> {
         }
       }
     } else {
-      log.info('No exact matches were found. Creating a new entry.');
+      this.log.info('No exact matches were found. Creating a new entry.');
     }
 
     // Otherwise, create it
@@ -343,7 +342,7 @@ export class Search<Element extends ElementBase> {
         data: item,
       });
     } catch (error) {
-      console.log(error);
+      this.log.error(error);
     }
   }
 
@@ -377,9 +376,9 @@ export class Search<Element extends ElementBase> {
         },
         tree: this.tree,
       });
-      log.info(`Expand index updated at ${this.expandIndexPath}/${key}.`);
+      this.log.info(`Expand index updated at ${this.expandIndexPath}/${key}.`);
     } catch (error_: unknown) {
-      log.error({ error: error_ }, 'Error when mirroring expand index.');
+      this.log.error({ error: error_ }, 'Error when mirroring expand index.');
     }
   } // UpdateExpandIndex
 
@@ -454,7 +453,7 @@ export class Search<Element extends ElementBase> {
         );
       // Don't throw, just remove the invalid ones and report out the results
       if (invalidExternalIds.length > 0)
-        log.warn(
+        this.log.warn(
           `The supplied External IDs are already in use: ${invalidExternalIds.join(', ')}`,
         );
 
@@ -500,7 +499,7 @@ export class Search<Element extends ElementBase> {
       );
 
     try {
-      const linkData = this.generate ? await this.generate(this.oada) : {};
+      const linkData = this.generate ? await this.generate(this.log, this.oada) : {};
       // Make the key equal to the resource id instead of tree POST
       const ptr = JsonPointer.create(`${this.path}/*/_type`);
       const { headers } = await this.oada.post({
@@ -526,19 +525,19 @@ export class Search<Element extends ElementBase> {
         path: this.path,
         data: { [key]: { _id, _rev: 0 } },
       });
-      log.info(`Added item to list at: ${this.path}/${key}`);
+      this.log.info(`Added item to list at: ${this.path}/${key}`);
 
       data = { ...data, masterid: _id };
 
       // Update the expand index
       // FYI: data does not contain _id so it is safe to send to
       await this.updateExpandIndex(data, key, this.oada);
-      log.info('Added item to the expand-index ', data.masterid);
+      this.log.info('Added item to the expand-index ', data.masterid);
       // Optimistic add to collection so we don't wait for things
       await this.setItem({ pointer: key, item: data });
       return data;
     } catch (error_: unknown) {
-      log.error('Generate Errored:', error_);
+      this.log.error('Generate Errored:', error_);
       throw error_;
     }
   }

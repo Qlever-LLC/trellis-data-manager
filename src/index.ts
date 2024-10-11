@@ -19,13 +19,11 @@
 import '@oada/pino-debug';
 
 import { config } from './config.js';
-
 // Import this first to setup the environment
 // import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
 
-import debug from 'debug';
 import esMain from 'es-main';
-
+import { pino } from '@oada/pino-debug';
 import { type OADAClient, connect } from '@oada/client';
 import { Service } from '@oada/jobs';
 import type TradingPartner from '@oada/types/trellis/trading-partners/trading-partner.js';
@@ -33,12 +31,7 @@ import type TradingPartner from '@oada/types/trellis/trading-partners/trading-pa
 import { generateTP, mergeTPs } from './trading-partners.js';
 import { Search } from './search.js';
 import { tree } from './tree.masterData.js';
-
-const log = {
-  error: debug('tdm:error'),
-  info: debug('tdm:info'),
-  trace: debug('tdm:trace'),
-};
+const log = pino({base: { service: 'trellis-data-manager' } });
 
 const { token, domain, connectTimeout } = config.get('oada');
 const NAME = config.get('service.name');
@@ -76,6 +69,7 @@ export async function run() {
   try {
     // Set the job type handlers
     const m = new Search<TradingPartner>({
+      log,
       oada: conn,
       path,
       name: 'trading-partners',
