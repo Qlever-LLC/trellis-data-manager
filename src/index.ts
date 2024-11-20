@@ -20,6 +20,8 @@ import '@oada/pino-debug';
 
 import { config } from './config.js';
 
+import '@oada/lib-prom';
+
 // Import this first to setup the environment
 // import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
 
