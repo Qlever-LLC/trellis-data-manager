@@ -1,6 +1,6 @@
 {
   "name": "@qlever-llc/trellis-data-manager",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "A microservice for managing trellis master data elements.",
   "main": "dist/index.js",
   "type": "module",
@@ -109,6 +109,7 @@
     "typescript": "^5.6.3"
   },
   "resolutions": {
+    "@oada/lib-prom": "^4.0.1",
     "cross-spawn": "^7.0.5",
     "jsonpath-plus": "^10.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
