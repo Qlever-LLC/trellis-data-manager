@@ -15,84 +15,84 @@
  * limitations under the License.
  */
 
-import libConfig from '@oada/lib-config';
+import libConfig from "@oada/lib-config";
 
 export const { config } = await libConfig({
   production: {
-    doc: 'Whether to run with production naming/oada paths or else testing prefixes',
+    doc: "Whether to run with production naming/oada paths or else testing prefixes",
     default: false,
-    env: 'PRODUCTION',
-    arg: 'production',
+    env: "PRODUCTION",
+    arg: "production",
   },
   service: {
     path: {
-      doc: 'Base path for the service',
-      default: '/bookmarks/services/trellis-data-manager',
-      env: 'SERVICE_PATH',
-      arg: 'service_path',
+      doc: "Base path for the service",
+      default: "/bookmarks/services/trellis-data-manager",
+      env: "SERVICE_PATH",
+      arg: "service_path",
     },
     name: {
-      doc: 'Name of the service; used by jobs lib; helps configuring tests separately',
-      default: 'trellis-data-manager',
-      env: 'SERVICE_NAME',
-      arg: 'service_name',
+      doc: "Name of the service; used by jobs lib; helps configuring tests separately",
+      default: "trellis-data-manager",
+      env: "SERVICE_NAME",
+      arg: "service_name",
     },
   },
   services: {
     query: {
-      doc: '',
+      doc: "",
       format: Boolean,
       default: true,
-      env: 'TARGET_SERVICE',
-      arg: 'targetServiceService',
+      env: "TARGET_SERVICE",
+      arg: "targetServiceService",
     },
     merge: {
-      doc: 'Enable/disable subservice watching the configuration',
+      doc: "Enable/disable subservice watching the configuration",
       format: Boolean,
       default: true,
-      env: 'WATCH_CONFIG_SERVICE',
-      arg: 'watchConfigService',
+      env: "WATCH_CONFIG_SERVICE",
+      arg: "watchConfigService",
     },
   },
   timeouts: {
     query: {
-      doc: 'Timeout duration for query jobs',
-      format: 'duration',
+      doc: "Timeout duration for query jobs",
+      format: "duration",
       // The types for duration suck
       default: 86_400_000 as unknown as number,
-      env: 'QUERY_TIMEOUT',
-      arg: 'query-timeout',
+      env: "QUERY_TIMEOUT",
+      arg: "query-timeout",
     },
   },
   oada: {
     domain: {
-      doc: 'OADA API domain',
+      doc: "OADA API domain",
       format: String,
-      default: 'proxy',
-      env: 'DOMAIN',
-      arg: 'domain',
+      default: "proxy",
+      env: "DOMAIN",
+      arg: "domain",
     },
     token: {
-      doc: 'OADA API token',
+      doc: "OADA API token",
       format: String,
-      default: 'god-proxy',
-      env: 'TOKEN',
-      arg: 'token',
+      default: "god-proxy",
+      env: "TOKEN",
+      arg: "token",
     },
     connectTimeout: {
-      doc: 'OADA API connect timeout',
+      doc: "OADA API connect timeout",
       format: Number,
       default: 20_000,
-      env: 'CONNECT_TIMEOUT',
-      arg: 'connect-timeout',
+      env: "CONNECT_TIMEOUT",
+      arg: "connect-timeout",
     },
   },
   concurrency: {
-    doc: 'concurrency',
+    doc: "concurrency",
     format: Number,
     default: 1,
-    env: 'CONCURRENCY',
-    arg: 'concurrency',
+    env: "CONCURRENCY",
+    arg: "concurrency",
   },
 });
 

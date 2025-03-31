@@ -15,26 +15,26 @@
  * limitations under the License.
  */
 
-import type { Tree } from '@oada/types/oada/tree/v1.js';
+import type { Tree } from "@oada/types/oada/tree/v1.js";
 export const tree: Tree = {
   bookmarks: {
-    _type: 'application/vnd.oada.bookmarks.1+json',
+    _type: "application/vnd.oada.bookmarks.1+json",
     _rev: 0,
     trellisfw: {
-      '_type': 'application/vnd.trellis.1+json',
-      '_rev': 0,
-      'trading-partners': {
-        '_type': 'application/vnd.trellisfw.trading-partners.1+json',
-        '_rev': 0,
-        '_meta': {
+      _type: "application/vnd.trellis.1+json",
+      _rev: 0,
+      "trading-partners": {
+        _type: "application/vnd.trellisfw.trading-partners.1+json",
+        _rev: 0,
+        _meta: {
           indexings: {
-            'expand-index': {
-              _type: 'application/vnd.trellisfw.trading-partners.1+json',
+            "expand-index": {
+              _type: "application/vnd.trellisfw.trading-partners.1+json",
             },
           },
         },
-        '*': {
-          _type: 'application/vnd.trellisfw.trading-partner.1+json',
+        "*": {
+          _type: "application/vnd.trellisfw.trading-partner.1+json",
           _rev: 0,
         },
       },

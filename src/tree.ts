@@ -19,38 +19,38 @@
 
 export const tree: Record<string, any> = {
   bookmarks: {
-    _type: 'application/vnd.oada.bookmarks.1+json',
+    _type: "application/vnd.oada.bookmarks.1+json",
     _rev: 0,
     trellisfw: {
-      '_type': 'application/vnd.oada.trellisfw.1+json',
-      '_rev': 0,
-      'trading-partners': {
-        '_type': 'application/vnd.oada.trading-partners.1+json',
-        '_rev': 0,
-        '*': {
-          _type: 'application/vnd.oada.trading-partner.1+json',
+      _type: "application/vnd.oada.trellisfw.1+json",
+      _rev: 0,
+      "trading-partners": {
+        _type: "application/vnd.oada.trading-partners.1+json",
+        _rev: 0,
+        "*": {
+          _type: "application/vnd.oada.trading-partner.1+json",
           _rev: 0,
           bookmarks: {
-            _type: 'application/vnd.oada.bookmarks.1+json',
+            _type: "application/vnd.oada.bookmarks.1+json",
             _rev: 0,
           },
         },
       },
-      '*': {
-        '_type': 'application/json',
-        '_rev': 0,
-        '*': {
-          _type: 'application/vnd.oada.trading-partner.1+json',
+      "*": {
+        _type: "application/json",
+        _rev: 0,
+        "*": {
+          _type: "application/vnd.oada.trading-partner.1+json",
           _rev: 0,
           bookmarks: {
-            _type: 'application/vnd.oada.bookmarks.1+json',
+            _type: "application/vnd.oada.bookmarks.1+json",
             _rev: 0,
           },
         },
       },
     },
     services: {
-      _type: 'application/vnd.oada.services.1+json',
+      _type: "application/vnd.oada.services.1+json",
       _rev: 0,
     },
   },

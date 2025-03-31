@@ -16,42 +16,42 @@
  */
 
 // Import this _before_ pino and/or DEBUG
-import '@oada/pino-debug';
+import "@oada/pino-debug";
 
-import { config } from './config.js';
+import { config } from "./config.js";
 
-import '@oada/lib-prom';
+import "@oada/lib-prom";
 
 // Import this first to setup the environment
 // import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
 
-import debug from 'debug';
-import esMain from 'es-main';
+import debug from "debug";
+import esMain from "es-main";
 
-import { type OADAClient, connect } from '@oada/client';
-import { Service } from '@oada/jobs';
-import type TradingPartner from '@oada/types/trellis/trading-partners/trading-partner.js';
+import { type OADAClient, connect } from "@oada/client";
+import { Service } from "@oada/jobs";
+import type TradingPartner from "@oada/types/trellis/trading-partners/trading-partner.js";
 
-import { generateTP, mergeTPs } from './trading-partners.js';
-import { Search } from './search.js';
-import { tree } from './tree.masterData.js';
+import { Search } from "./search.js";
+import { generateTP, mergeTPs } from "./trading-partners.js";
+import { tree } from "./tree.masterData.js";
 
 const log = {
-  error: debug('tdm:error'),
-  info: debug('tdm:info'),
-  trace: debug('tdm:trace'),
+  error: debug("tdm:error"),
+  info: debug("tdm:info"),
+  trace: debug("tdm:trace"),
 };
 
-const { token, domain, connectTimeout } = config.get('oada');
-const NAME = config.get('service.name');
+const { token, domain, connectTimeout } = config.get("oada");
+const NAME = config.get("service.name");
 // Const concurrency = config.get('concurrency');
-const PRODUCTION = config.get('production');
-const SERVICE_NAME = `${PRODUCTION ? '' : 'test-'}${NAME}`;
+const PRODUCTION = config.get("production");
+const SERVICE_NAME = `${PRODUCTION ? "" : "test-"}${NAME}`;
 const path = PRODUCTION
-  ? `/bookmarks/trellisfw/trading-partners`
-  : `/bookmarks/test/trading-partners`;
+  ? "/bookmarks/trellisfw/trading-partners"
+  : "/bookmarks/test/trading-partners";
 let oada: OADAClient;
-tree.bookmarks!.test = structuredClone(tree.bookmarks!.trellisfw) ?? {};
+tree.bookmarks!.test = structuredClone(tree.bookmarks?.trellisfw) ?? {};
 
 /**
  * Start-up for a given user (token)
@@ -80,7 +80,7 @@ export async function run() {
     const m = new Search<TradingPartner>({
       oada: conn,
       path,
-      name: 'trading-partners',
+      name: "trading-partners",
       service: svc,
       // Assert: assertTP,
       generate: generateTP,
@@ -89,14 +89,14 @@ export async function run() {
       // Get searchKeys from the schema somehow?
       searchKeys: [
         {
-          name: 'name',
+          name: "name",
           weight: 2,
         },
-        'phone',
-        'email',
-        'address',
-        'city',
-        'state',
+        "phone",
+        "email",
+        "address",
+        "city",
+        "state",
       ],
     });
     await m.init();
@@ -108,15 +108,15 @@ export async function run() {
     process.exit(1);
   }
 
-  log.info('trellis-data-manager startup complete. It is now running...');
+  log.info("trellis-data-manager startup complete. It is now running...");
 }
 
 if (esMain(import.meta)) {
-  log.info('Starting up the service. Calling initialize');
+  log.info("Starting up the service. Calling initialize");
   await run();
 } else {
-  log.info('Just importing fl-sync');
+  log.info("Just importing fl-sync");
 }
 
-export * as tradingPartners from './trading-partners.js';
-export * as search from './search.js';
+export * as tradingPartners from "./trading-partners.js";
+export * as search from "./search.js";

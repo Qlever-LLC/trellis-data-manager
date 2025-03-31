@@ -15,47 +15,47 @@
  * limitations under the License.
  */
 
-import { config } from './config.js';
+import { config } from "./config.js";
 
-import Fuse from 'fuse.js';
-import { JsonPointer } from 'json-ptr';
-import debug from 'debug';
+import debug from "debug";
+import Fuse from "fuse.js";
+import { JsonPointer } from "json-ptr";
 
-import { ChangeType, ListWatch } from '@oada/list-lib';
-import { Counter, Gauge } from '@oada/lib-prom';
-import type { Service, WorkerFunction } from '@oada/jobs';
-import type { OADAClient } from '@oada/client';
-import type { Tree } from '@oada/types/oada/tree/v1.js';
+import type { OADAClient } from "@oada/client";
+import type { Service, WorkerFunction } from "@oada/jobs";
+import { Counter, Gauge } from "@oada/lib-prom";
+import { ChangeType, ListWatch } from "@oada/list-lib";
+import type { Tree } from "@oada/types/oada/tree/v1.js";
 
 const log = {
-  info: debug('trellis-data-manager-Search:info'),
-  warn: debug('trellis-data-manager-Search:warn'),
-  error: debug('trellis-data-manager-Search:error'),
+  info: debug("trellis-data-manager-Search:info"),
+  warn: debug("trellis-data-manager-Search:warn"),
+  error: debug("trellis-data-manager-Search:error"),
 };
 
 const ensureCount = new Counter({
-  name: 'tdm:ensure',
-  help: 'Counts number of ensure() calls',
+  name: "tdm:ensure",
+  help: "Counts number of ensure() calls",
 });
 const queryCount = new Counter({
-  name: 'tdm:query',
-  help: 'Counts number of query() calls',
+  name: "tdm:query",
+  help: "Counts number of query() calls",
 });
 const generateCount = new Counter({
-  name: 'tdm:generate',
-  help: 'Counts number of generate() calls',
+  name: "tdm:generate",
+  help: "Counts number of generate() calls",
 });
 const updateCount = new Counter({
-  name: 'tdm:update',
-  help: 'Counts number of update() calls',
+  name: "tdm:update",
+  help: "Counts number of update() calls",
 });
 const mergeCount = new Counter({
-  name: 'tdm:merge',
-  help: 'Counts number of merge() calls',
+  name: "tdm:merge",
+  help: "Counts number of merge() calls",
 });
 const tpCount = new Gauge({
-  name: 'tdm:trading_partners_count',
-  help: 'Counts number of trading partners',
+  name: "tdm:trading_partners_count",
+  help: "Counts number of trading partners",
 });
 /* Const errorCount = new Counter({
   name: 'tdm:error',
@@ -130,10 +130,10 @@ export class Search<Element extends ElementBase> {
     this.service = service;
     this.searchKeys = searchKeys ?? [];
     this.searchKeysList = this.searchKeys.map((index) =>
-      typeof index === 'string' ? index : index.name,
+      typeof index === "string" ? index : index.name,
     );
     this.exactKeys = Array.from(
-      new Set(['masterid', 'externalIds'].concat(exactKeys ?? [])),
+      new Set(["masterid", "externalIds"].concat(exactKeys ?? [])),
     );
     const options = {
       includeScore: true,
@@ -199,7 +199,7 @@ export class Search<Element extends ElementBase> {
     })) as unknown as { data: Record<string, Element> };
 
     data = Object.fromEntries(
-      Object.entries(data).filter(([k, _]) => !k.startsWith('_')),
+      Object.entries(data).filter(([k, _]) => !k.startsWith("_")),
     );
 
     this.indexObject = data;
@@ -207,31 +207,31 @@ export class Search<Element extends ElementBase> {
 
     this.service.on(
       `${this.name}-query`,
-      config.get('timeouts.query'),
+      config.get("timeouts.query"),
       this.query.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-query listener.`);
     this.service.on(
       `${this.name}-generate`,
-      config.get('timeouts.query'),
+      config.get("timeouts.query"),
       this.generateElement.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-generate listener.`);
     this.service.on(
       `${this.name}-ensure`,
-      config.get('timeouts.query'),
+      config.get("timeouts.query"),
       this.ensure.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-ensure listener.`);
     this.service.on(
       `${this.name}-merge`,
-      config.get('timeouts.query'),
+      config.get("timeouts.query"),
       this.mergeElements.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-merge listener.`);
     this.service.on(
       `${this.name}-update`,
-      config.get('timeouts.query'),
+      config.get("timeouts.query"),
       this.update.bind(this) as unknown as WorkerFunction,
     );
     log.info(`Started ${this.name}-update listener.`);
@@ -257,7 +257,7 @@ export class Search<Element extends ElementBase> {
     );
     if (!element || element === undefined || Object.keys(element).length === 0)
       throw new Error(
-        'Query Error: Invalid input search element at job.config.element',
+        "Query Error: Invalid input search element at job.config.element",
       );
 
     // First find exact matches using primary keys
@@ -278,7 +278,7 @@ export class Search<Element extends ElementBase> {
     if (queryResult.matches.length > 0) {
       if (queryResult.exact) {
         if (queryResult.matches.length === 1) {
-          log.info(`An exact match was found. Returning match.`);
+          log.info("An exact match was found. Returning match.");
           return {
             entry: queryResult.matches[0].item,
             ...queryResult,
@@ -287,7 +287,7 @@ export class Search<Element extends ElementBase> {
         }
 
         if (queryResult.matches.length > 1) {
-          log.warn(`Multiple exact matches were found. Returning matches.`);
+          log.warn("Multiple exact matches were found. Returning matches.");
           return {
             ...queryResult,
             new: false,
@@ -295,7 +295,7 @@ export class Search<Element extends ElementBase> {
         }
       }
     } else {
-      log.info('No exact matches were found. Creating a new entry.');
+      log.info("No exact matches were found. Creating a new entry.");
     }
 
     // Otherwise, create it
@@ -310,18 +310,18 @@ export class Search<Element extends ElementBase> {
     const exactString = (this.exactKeys ?? [])
       .filter((ek) => element[ek])
       .map((ek) =>
-        typeof element[ek] === 'string'
+        typeof element[ek] === "string"
           ? `=${element[ek]}`
-          : element[ek].map((k: any) => `=${k}`).join(' | '),
+          : element[ek].map((k: any) => `=${k}`).join(" | "),
       )
-      .join(` | `);
+      .join(" | ");
 
     return this.index.search(exactString);
   }
 
   async setItem({ item, pointer }: { item: any; pointer: string }) {
-    const id = pointer.replace(/^\//, '');
-    if (id === 'expand-index') return;
+    const id = pointer.replace(/^\//, "");
+    if (id === "expand-index") return;
 
     item = await item;
     this.indexObject[id] = item;
@@ -329,13 +329,13 @@ export class Search<Element extends ElementBase> {
   }
 
   async setItemExpand({ item, pointer }: { item: any; pointer: string }) {
-    const key = pointer.replace(/^\//, '');
-    if (key === 'expand-index' || key.startsWith('_')) return;
+    const key = pointer.replace(/^\//, "");
+    if (key === "expand-index" || key.startsWith("_")) return;
 
     item = await item;
 
     item = Object.fromEntries(
-      Object.entries(item).filter(([k, _]) => !k.startsWith('_')),
+      Object.entries(item).filter(([k, _]) => !k.startsWith("_")),
     );
     try {
       await this.oada.put({
@@ -348,16 +348,16 @@ export class Search<Element extends ElementBase> {
   }
 
   async removeItemExpand({ pointer }: { pointer: string }) {
-    const key = pointer.replace(/^\//, '');
-    if (key === 'expand-index') return;
+    const key = pointer.replace(/^\//, "");
+    if (key === "expand-index") return;
     await this.oada.delete({
       path: `${this.expandIndexPath}/${key}`,
     });
   }
 
   async removeItem({ pointer }: { pointer: string }) {
-    const id = pointer.replace(/^\//, '');
-    if (id === 'expand-index') return;
+    const id = pointer.replace(/^\//, "");
+    if (id === "expand-index") return;
     delete this.indexObject[id];
     this.setCollection(this.indexObject);
   }
@@ -379,7 +379,7 @@ export class Search<Element extends ElementBase> {
       });
       log.info(`Expand index updated at ${this.expandIndexPath}/${key}.`);
     } catch (error_: unknown) {
-      log.error({ error: error_ }, 'Error when mirroring expand index.');
+      log.error({ error: error_ }, "Error when mirroring expand index.");
     }
   } // UpdateExpandIndex
 
@@ -415,12 +415,12 @@ export class Search<Element extends ElementBase> {
       data,
     });
     await this.setItem({
-      pointer: data.masterid.replace(/^resources\//, ''),
+      pointer: data.masterid.replace(/^resources\//, ""),
       item: data,
     });
 
     // Delete the element to fail over any queries during the merge
-    const fromKey = from.replace(/^resources/, '');
+    const fromKey = from.replace(/^resources/, "");
     await this.oada.delete({
       path: `${this.path}${fromKey}`,
     });
@@ -438,11 +438,11 @@ export class Search<Element extends ElementBase> {
     updateCount.inc();
     const { element } = job.config;
     if (!element.masterid) {
-      throw new Error(`masterid required for update operation.`);
+      throw new Error("masterid required for update operation.");
     }
 
     const queryResult = this.index.search(`=${element.masterid}`);
-    if (!queryResult) throw new Error(`Entry with masterid not found`);
+    if (!queryResult) throw new Error("Entry with masterid not found");
     // Validate that new externalIds are not in use.
     if (element.externalIds && element.externalIds.length > 0) {
       const invalidExternalIds = (element.externalIds ?? [])
@@ -455,7 +455,7 @@ export class Search<Element extends ElementBase> {
       // Don't throw, just remove the invalid ones and report out the results
       if (invalidExternalIds.length > 0)
         log.warn(
-          `The supplied External IDs are already in use: ${invalidExternalIds.join(', ')}`,
+          `The supplied External IDs are already in use: ${invalidExternalIds.join(", ")}`,
         );
 
       element.externalIds = Array.from(
@@ -478,7 +478,7 @@ export class Search<Element extends ElementBase> {
       path: `/${element.masterid}`,
     });
     await this.setItem({
-      pointer: element.masterid.replace(/^resources\//, ''),
+      pointer: element.masterid.replace(/^resources\//, ""),
       item: data,
     });
     return data as unknown as Element;
@@ -504,16 +504,16 @@ export class Search<Element extends ElementBase> {
       // Make the key equal to the resource id instead of tree POST
       const ptr = JsonPointer.create(`${this.path}/*/_type`);
       const { headers } = await this.oada.post({
-        path: `/resources`,
+        path: "/resources",
         data: {
           ...data,
           ...linkData,
         },
         contentType: ptr.get(this.tree) as string,
       });
-      const location = headers['content-location'];
-      const _id = location!.replace(/^\//, '');
-      const key = location!.replace(/^\/resources\//, '');
+      const location = headers["content-location"];
+      const _id = location!.replace(/^\//, "");
+      const key = location!.replace(/^\/resources\//, "");
 
       // Add the masterid to itself
       await this.oada.put({
@@ -533,12 +533,12 @@ export class Search<Element extends ElementBase> {
       // Update the expand index
       // FYI: data does not contain _id so it is safe to send to
       await this.updateExpandIndex(data, key, this.oada);
-      log.info('Added item to the expand-index ', data.masterid);
+      log.info("Added item to the expand-index ", data.masterid);
       // Optimistic add to collection so we don't wait for things
       await this.setItem({ pointer: key, item: data });
       return data;
     } catch (error_: unknown) {
-      log.error('Generate Errored:', error_);
+      log.error("Generate Errored:", error_);
       throw error_;
     }
   }

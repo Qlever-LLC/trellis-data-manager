@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-declare module 'fuse.js' {
+declare module "fuse.js" {
   export class Fuse<T> {
     /**
      * Return the current version.

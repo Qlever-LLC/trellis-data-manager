@@ -15,37 +15,37 @@
  * limitations under the License.
  */
 
-import { config } from './config.js';
+import { config } from "./config.js";
 
-import debug from 'debug';
+import debug from "debug";
 
-import type { OADAClient } from '@oada/client';
+import type { OADAClient } from "@oada/client";
 
-import tree from './tree.masterData.js';
+import tree from "./tree.masterData.js";
 
-const SERVICE_NAME = config.get('service.name');
+const SERVICE_NAME = config.get("service.name");
 
-if (SERVICE_NAME && tree?.bookmarks?.services?.['fl-sync']) {
-  tree.bookmarks.services[SERVICE_NAME] = tree.bookmarks.services['fl-sync'];
+if (SERVICE_NAME && tree?.bookmarks?.services?.["fl-sync"]) {
+  tree.bookmarks.services[SERVICE_NAME] = tree.bookmarks.services["fl-sync"];
 }
 
-const info = debug('trellis-data-manager:trading-partners:info');
-const error = debug('trellis-data-manager:trading-partners:error');
+const info = debug("trellis-data-manager:trading-partners:info");
+const error = debug("trellis-data-manager:trading-partners:error");
 
 export const trellisTPTemplate = {
-  id: '',
-  masterid: '',
-  companycode: '',
-  vendorid: '',
-  partnerid: '',
-  name: '',
-  address: '',
-  city: '',
-  state: '',
-  coi_emails: '',
-  fsqa_emails: '',
-  email: '',
-  phone: '',
+  id: "",
+  masterid: "",
+  companycode: "",
+  vendorid: "",
+  partnerid: "",
+  name: "",
+  address: "",
+  city: "",
+  state: "",
+  coi_emails: "",
+  fsqa_emails: "",
+  email: "",
+  phone: "",
   externalIds: [],
 };
 
@@ -79,34 +79,34 @@ export async function generateTP(oada: OADAClient) {
   let bookmarks;
   try {
     const { headers } = await oada.post({
-      path: `/resources`,
+      path: "/resources",
       data: {},
-      contentType: 'application/vnd.oada.bookmarks.1+json',
+      contentType: "application/vnd.oada.bookmarks.1+json",
     });
-    bookmarks = headers['content-location'];
+    bookmarks = headers["content-location"];
   } catch (error_: unknown) {
     error(error_);
     throw error_;
   }
 
-  const bookmarksId = bookmarks?.replace(/^\//, '');
-  info(`/bookmarks created for trading partner`);
+  const bookmarksId = bookmarks?.replace(/^\//, "");
+  info("/bookmarks created for trading partner");
 
   let shared;
   try {
     const { headers } = await oada.post({
-      path: `/resources`,
+      path: "/resources",
       data: {},
-      contentType: 'application/vnd.oada.bookmarks.1+json',
+      contentType: "application/vnd.oada.bookmarks.1+json",
     });
-    shared = headers['content-location'];
+    shared = headers["content-location"];
   } catch (error_: unknown) {
     error(error_);
     throw error_;
   }
 
-  const sharedId = shared?.replace(/^\//, '');
-  info(`/shared created for trading partner`);
+  const sharedId = shared?.replace(/^\//, "");
+  info("/shared created for trading partner");
 
   return {
     bookmarks: {
@@ -127,7 +127,7 @@ async function mergeDocumentTree(oada: OADAClient, from: string, to: string) {
   try {
     const { data: documentTypes } = await oada.get({ path: `${fromPath}` });
     documentTypeKeys = Object.keys(documentTypes ?? {}).filter(
-      (k) => !k.startsWith('_'),
+      (k) => !k.startsWith("_"),
     );
   } catch (error: any) {
     if (error.status !== 404) throw error;
@@ -140,7 +140,7 @@ async function mergeDocumentTree(oada: OADAClient, from: string, to: string) {
       });
       const documents = Object.fromEntries(
         Object.entries(documentType ?? {}).filter(
-          ([key, _]) => !key.startsWith('_'),
+          ([key, _]) => !key.startsWith("_"),
         ),
       );
       await oada.put({
