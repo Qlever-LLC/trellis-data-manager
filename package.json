@@ -7,10 +7,7 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "files": [
-    "src/**/*",
-    "dist/**/*"
-  ],
+  "files": ["src/**/*", "dist/**/*"],
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc -b --watch",
@@ -22,13 +19,9 @@
   },
   "ava": {
     "failFast": false,
-    "files": [
-      "**/*.test.ts"
-    ],
+    "files": ["**/*.test.ts"],
     "typescript": {
-      "extensions": [
-        "ts"
-      ],
+      "extensions": ["ts"],
       "rewritePaths": {
         "src/": "dist/",
         "test/": ".test/"
@@ -37,17 +30,10 @@
     }
   },
   "c8": {
-    "reporter": [
-      "text",
-      "lcov"
-    ],
+    "reporter": ["text", "lcov"],
     "all": true,
     "src": "src",
-    "exclude": [
-      "*.d.ts",
-      ".pnp.*",
-      ".test"
-    ]
+    "exclude": ["*.d.ts", ".pnp.*", ".test"]
   },
   "license": "Apache-2.0",
   "dependencies": {
