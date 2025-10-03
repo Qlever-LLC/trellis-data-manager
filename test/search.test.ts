@@ -17,19 +17,18 @@
 
 /* eslint-disable sonarjs/no-duplicate-string */
 
-import { config } from "../dist/config.js";
-
-import test from "ava";
-
 import { setTimeout } from "node:timers/promises";
 
 import type { OADAClient } from "@oada/client";
 import { connect } from "@oada/client";
 import { doJob } from "@oada/client/jobs";
 import { Service } from "@oada/jobs";
+import test from "ava";
+
+import { config } from "../dist/config.js";
 
 import { Search } from "../dist/search.js";
-import { tree } from "../dist/tree.masterData.js";
+import tree from "../dist/tree.masterData.js";
 
 const { token, domain } = config.get("oada");
 

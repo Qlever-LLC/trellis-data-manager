@@ -25,20 +25,20 @@ import "@oada/lib-prom";
 // Import this first to setup the environment
 // import { assert as assertTP } from '@oada/types/trellis/trading-partners/trading-partner.js';
 
+import { connect, type OADAClient } from "@oada/client";
+import { Service } from "@oada/jobs";
+import type TradingPartner from "@oada/types/trellis/trading-partners/trading-partner.js";
 import debug from "debug";
 import esMain from "es-main";
 
-import { type OADAClient, connect } from "@oada/client";
-import { Service } from "@oada/jobs";
-import type TradingPartner from "@oada/types/trellis/trading-partners/trading-partner.js";
-
 import { Search } from "./search.js";
 import { generateTP, mergeTPs } from "./trading-partners.js";
-import { tree } from "./tree.masterData.js";
+import tree from "./tree.masterData.js";
 
 const log = {
   error: debug("tdm:error"),
   info: debug("tdm:info"),
+  debug: debug("tdm:debug"),
   trace: debug("tdm:trace"),
 };
 
@@ -112,11 +112,11 @@ export async function run() {
 }
 
 if (esMain(import.meta)) {
-  log.info("Starting up the service. Calling initialize");
+  log.debug("Starting up the service. Calling initialize");
   await run();
 } else {
-  log.info("Just importing fl-sync");
+  log.debug("Just importing fl-sync");
 }
 
-export * as tradingPartners from "./trading-partners.js";
 export * as search from "./search.js";
+export * as tradingPartners from "./trading-partners.js";

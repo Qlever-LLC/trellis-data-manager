@@ -15,22 +15,23 @@
  * limitations under the License.
  */
 
-import { config } from "./config.js";
-
-import debug from "debug";
-import Fuse from "fuse.js";
-import { JsonPointer } from "json-ptr";
-
 import type { OADAClient } from "@oada/client";
 import type { Service, WorkerFunction } from "@oada/jobs";
 import { Counter, Gauge } from "@oada/lib-prom";
 import { ChangeType, ListWatch } from "@oada/list-lib";
 import type { Tree } from "@oada/types/oada/tree/v1.js";
+import debug from "debug";
+import Fuse from "fuse.js";
+import { JsonPointer } from "json-ptr";
+
+import { config } from "./config.js";
 
 const log = {
-  info: debug("trellis-data-manager-Search:info"),
-  warn: debug("trellis-data-manager-Search:warn"),
-  error: debug("trellis-data-manager-Search:error"),
+  trace: debug("trellis-data-manager-search:trace"),
+  debug: debug("trellis-data-manager-search:debug"),
+  info: debug("trellis-data-manager-search:info"),
+  warn: debug("trellis-data-manager-search:warn"),
+  error: debug("trellis-data-manager-search:error"),
 };
 
 const ensureCount = new Counter({
@@ -169,8 +170,8 @@ export class Search<Element extends ElementBase> {
         data: {},
         tree: this.tree,
       });
-    } catch (error) {
-      console.log(error);
+    } catch (error: unknown) {
+      log.error(error);
     }
 
     this.#watch = new ListWatch({
@@ -210,31 +211,31 @@ export class Search<Element extends ElementBase> {
       config.get("timeouts.query"),
       this.query.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-query listener.`);
+    log.debug(`Started ${this.name}-query listener.`);
     this.service.on(
       `${this.name}-generate`,
       config.get("timeouts.query"),
       this.generateElement.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-generate listener.`);
+    log.debug(`Started ${this.name}-generate listener.`);
     this.service.on(
       `${this.name}-ensure`,
       config.get("timeouts.query"),
       this.ensure.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-ensure listener.`);
+    log.debug(`Started ${this.name}-ensure listener.`);
     this.service.on(
       `${this.name}-merge`,
       config.get("timeouts.query"),
       this.mergeElements.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-merge listener.`);
+    log.debug(`Started ${this.name}-merge listener.`);
     this.service.on(
       `${this.name}-update`,
       config.get("timeouts.query"),
       this.update.bind(this) as unknown as WorkerFunction,
     );
-    log.info(`Started ${this.name}-update listener.`);
+    log.debug(`Started ${this.name}-update listener.`);
   }
 
   setCollection(data: Record<string, Element>) {
@@ -278,7 +279,7 @@ export class Search<Element extends ElementBase> {
     if (queryResult.matches.length > 0) {
       if (queryResult.exact) {
         if (queryResult.matches.length === 1) {
-          log.info("An exact match was found. Returning match.");
+          log.trace("An exact match was found. Returning match.");
           return {
             entry: queryResult.matches[0].item,
             ...queryResult,
@@ -295,7 +296,7 @@ export class Search<Element extends ElementBase> {
         }
       }
     } else {
-      log.info("No exact matches were found. Creating a new entry.");
+      log.trace("No exact matches were found. Creating a new entry.");
     }
 
     // Otherwise, create it
@@ -342,8 +343,8 @@ export class Search<Element extends ElementBase> {
         path: `${this.expandIndexPath}/${key}`,
         data: item,
       });
-    } catch (error) {
-      console.log(error);
+    } catch (error: unknown) {
+      log.error(error);
     }
   }
 
@@ -377,7 +378,7 @@ export class Search<Element extends ElementBase> {
         },
         tree: this.tree,
       });
-      log.info(`Expand index updated at ${this.expandIndexPath}/${key}.`);
+      log.trace(`Expand index updated at ${this.expandIndexPath}/${key}.`);
     } catch (error_: unknown) {
       log.error({ error: error_ }, "Error when mirroring expand index.");
     }
@@ -526,20 +527,20 @@ export class Search<Element extends ElementBase> {
         path: this.path,
         data: { [key]: { _id, _rev: 0 } },
       });
-      log.info(`Added item to list at: ${this.path}/${key}`);
+      log.trace(`Added item to list at: ${this.path}/${key}`);
 
       data = { ...data, masterid: _id };
 
       // Update the expand index
       // FYI: data does not contain _id so it is safe to send to
       await this.updateExpandIndex(data, key, this.oada);
-      log.info("Added item to the expand-index ", data.masterid);
+      log.trace("Added item to the expand-index ", data.masterid);
       // Optimistic add to collection so we don't wait for things
       await this.setItem({ pointer: key, item: data });
       return data;
-    } catch (error_: unknown) {
-      log.error("Generate Errored:", error_);
-      throw error_;
+    } catch (err: unknown) {
+      log.error(err, "Generate Errored");
+      throw err;
     }
   }
 }

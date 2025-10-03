@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-import { config } from "./config.js";
+import type { OADAClient } from "@oada/client";
 
 import debug from "debug";
 
-import type { OADAClient } from "@oada/client";
+import { config } from "./config.js";
 
 import tree from "./tree.masterData.js";
 

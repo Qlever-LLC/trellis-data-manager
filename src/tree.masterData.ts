@@ -16,7 +16,8 @@
  */
 
 import type { Tree } from "@oada/types/oada/tree/v1.js";
-export const tree: Tree = {
+
+export default {
   bookmarks: {
     _type: "application/vnd.oada.bookmarks.1+json",
     _rev: 0,
@@ -40,6 +41,4 @@ export const tree: Tree = {
       },
     },
   },
-};
-
-export default tree;
+} as Tree;

@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-// import type { Tree } from '@oada/list-lib';
+import type { Tree } from "@oada/types/oada/tree/v1.js";
 
-export const tree: Record<string, any> = {
+export default {
   bookmarks: {
     _type: "application/vnd.oada.bookmarks.1+json",
     _rev: 0,
@@ -54,6 +54,4 @@ export const tree: Record<string, any> = {
       _rev: 0,
     },
   },
-};
-
-export default tree;
+} as const satisfies Tree;
